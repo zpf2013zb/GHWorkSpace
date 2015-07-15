@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{809efd8e-340b-47b3-894d-95d160a06887}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Preprocessing">
+      <UniqueIdentifier>{2c1d4e3e-4025-4d22-be06-56dc73d0a4e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DCSKM">
+      <UniqueIdentifier>{0d04256f-a0fc-4291-b329-f6fc77512eaa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance">
+      <UniqueIdentifier>{d94bd075-479f-4dd1-8547-27bb3a95f903}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data\Synthetic Datasets">
+      <UniqueIdentifier>{c6771d54-1d2e-4ab8-865a-ca351894c07f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data\Real Datasets">
+      <UniqueIdentifier>{f25e0445-efd7-48cc-9193-5c6db9850fa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DCSKM\EA">
+      <UniqueIdentifier>{75059e38-f441-4474-b9fc-10947c308bd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DCSKM\EGTD">
+      <UniqueIdentifier>{d4c78f60-4125-4fc6-bbf1-87213d5c4d92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DCSKM\EGBU">
+      <UniqueIdentifier>{95db483f-d057-42c2-9c32-f82c4b3bfae7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Preprocessing\GTree">
+      <UniqueIdentifier>{2518d6f6-5657-4478-ab09-e51a8ad3ea3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Preprocessing\EGTree">
+      <UniqueIdentifier>{f493b3e7-20d4-40f5-86c7-781e51224dbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\NOfQK-|q.k|">
+      <UniqueIdentifier>{d9dadaae-fe54-4552-9c02-e689c6077d28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\Distance Constraint-DC">
+      <UniqueIdentifier>{90cbb418-e0cb-4769-afbf-b6af78dc1f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\Subspace Dimension-SD">
+      <UniqueIdentifier>{cad15c07-4cf1-4eff-a8a5-97940b564d44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\Ave POIs-|POIs|">
+      <UniqueIdentifier>{5879fc1a-686e-4beb-87a7-079416230433}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\Ave kwds-|kwds|">
+      <UniqueIdentifier>{50077c95-41ee-4322-9ad8-16df33138107}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Preprocessing\Adjacency List">
+      <UniqueIdentifier>{0e33839d-c43c-4adc-997f-d785a97e5d2e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+    <None Include="cal.cedge">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="cal.cnode">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="cal.gtree">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="cal.minds">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="cal.object">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="cal.paths">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="gtree_build">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="gtree_query">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="Makefile">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="README (2).txt">
+      <Filter>Preprocessing\GTree</Filter>
+    </None>
+    <None Include="._.DS_Store">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </None>
+    <None Include=".DS_Store">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="EGTree.h">
+      <Filter>Preprocessing\EGTree</Filter>
+    </ClInclude>
+    <ClInclude Include="blk_file.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="btree.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfigType.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="diskbased.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="KeywordsGenerator.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="netshare.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+    <ClInclude Include="utility.h">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DCSKM.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="EGTree.cpp">
+      <Filter>Preprocessing\EGTree</Filter>
+    </ClCompile>
+    <ClCompile Include="gtree_build.cpp">
+      <Filter>Preprocessing\GTree</Filter>
+    </ClCompile>
+    <ClCompile Include="gtree_query.cpp">
+      <Filter>Preprocessing\GTree</Filter>
+    </ClCompile>
+    <ClCompile Include="._RkBSK-query.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="blk_file.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="btree.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigType.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="gendata.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="genQueryPoint2File.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="KeywordsGenerator.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="RkBSK-query.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="selectQueryPoints.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+    <ClCompile Include="utility.cc">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
