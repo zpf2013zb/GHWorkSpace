@@ -19,17 +19,18 @@ BlockFile::BlockFile(char* name,int b_length)
     int l;
 
     filename = new char[strlen(name) + 1];
+	// be careful when use the strcpy
     strcpy(filename,name);
     blocklength = b_length;
     number = 0;
-
+	// if open sucessfully,file already exist
     if ((fp=fopen(name,"rb+"))!=0)
     {
         new_flag = FALSE;
         blocklength = fread_number();
         number = fread_number();
     }
-    else
+    else // new creat the file
     {
         if (blocklength < BFHEAD_LENGTH)
         {
@@ -68,7 +69,7 @@ void BlockFile::read_header(char* buffer)
 {
     fseek(fp,BFHEAD_LENGTH,SEEK_SET);
     get_bytes(buffer,blocklength-BFHEAD_LENGTH);
-
+	// if has block then set fp to block 1 then to block 0
     if(number<1)
     {
         fseek(fp,0,SEEK_SET);
@@ -113,7 +114,7 @@ bool BlockFile::read_block(Block b,int pos)
 
 bool BlockFile::write_block(const Block block,int pos)
 {
-    pos++;
+    pos++; //??? why add 1, intial is -1
 
     if (pos<=number && pos>0)
         seek_block(pos);
@@ -145,6 +146,7 @@ int BlockFile::append_block(const Block block)
 }
 
 //========================CachedBlockFile=========================
+// return a free cache block 
 int CachedBlockFile::next()
 {
     int ret_val, tmp;
@@ -221,7 +223,7 @@ bool CachedBlockFile::read_block(Block block,int index)
 {
     int c_ind;
 
-    index++;
+    index++; //??? 
     if(index<=get_num_of_blocks() && index>0)
     {
         if((c_ind=in_cache(index))>=0)
@@ -229,6 +231,7 @@ bool CachedBlockFile::read_block(Block block,int index)
         else
         {
             c_ind = next();
+			// if not in cache, load it from blockfile
             if (c_ind >= 0)
             {
                 BlockFile::read_block(cache[c_ind],index-1);

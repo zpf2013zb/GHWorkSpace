@@ -52,7 +52,7 @@ CandidateSet cS;//Store Candidate POI during the query procedure
 ResultSet rS;//Store Final result POI
 
 void RefineDist(CandidateSet &cS,const QueryPoint &Q);//Refine distance of POI
-
+// get the keyword number of keyword
 int getCount(unsigned long long &keyword)
 {
     int count=0;
@@ -64,7 +64,7 @@ int getCount(unsigned long long &keyword)
     }
     return count;
 }
-
+// generate the subset of keywrod and append them to subset
 void genSubset(unsigned long long keywordset,vector<unsigned long long > &subset)
 {
     bool flag=false;
@@ -88,7 +88,7 @@ void genSubset(unsigned long long keywordset,vector<unsigned long long > &subset
         }
     }
 }
-
+// print the subset keyword
 void printSubset(vector<unsigned long long > &subset)
 {
     auto iter=subset.begin();
@@ -97,7 +97,7 @@ void printSubset(vector<unsigned long long > &subset)
         cout<<*iter<<endl;
     }
 }
-
+// generate all the subset map of Q.keyword and put it in submap
 void genSubsetMap(SubsetMap &subsmap,const QueryPoint &Q)
 {
     vector<unsigned long long> subsetofQ;
@@ -116,7 +116,7 @@ void genSubsetMap(SubsetMap &subsmap,const QueryPoint &Q)
 }
 
 
-
+// show all the adjacent of node NodeID
 void showAllAdj(int NodeID)
 {
     
@@ -136,14 +136,14 @@ void showAllAdj(int NodeID)
     }
     
 }
-
+// whether L contains R
 bool LcontianR(unsigned long long L,unsigned long long R)
 {
     //High bit set to zero
     //R&=tmp;
     return  (L&R)==R;
 }
-
+// return the intersect of L and R
 bool LintersectR(unsigned long long L,unsigned long long R,unsigned long long &keywords)
 {
     if((L&R)!=0)
@@ -155,8 +155,6 @@ bool LintersectR(unsigned long long L,unsigned long long R,unsigned long long &k
         return false;
     
 }
-
-
 
 typedef	priority_queue<DStepEvent,vector<DStepEvent>,DStepComparison> DStepQueue;
 
@@ -366,7 +364,6 @@ bool INEBasedVerify(POI p,float dist_toQ,int k)//Need to remove p itself on edge
 //InitCountMap of Ni,Nj where Q located,must be Invoked after genSubsetMap
 void InitCountMap(const struct QueryPoint &Q,Querytype type)
 {
-    
     if(type==baseline2)
     {
         BasicCountMap bcmNi,bcmNj;

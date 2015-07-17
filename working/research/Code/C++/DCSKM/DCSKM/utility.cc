@@ -28,6 +28,7 @@ void AddAll(FastList<int> &S,FastList<int> &C)
     for (int i=0; i<C.size(); i++) S.push_back(C[i]);
 }
 
+// remove elements of C from S 
 void RemoveAll(FastList<int> &S,FastList<int> &C)
 {
     // new version experienced 65 times faster than	old version
@@ -214,7 +215,7 @@ void TrimSpace(char* str)
 //    return Dcnt;
 //}
 
-void printPattern(BitStore* bs)
+void printPattern(BitStore* bs) 
 {
     printf("{");
     for (int i=0; i<bs->size(); i++)
@@ -396,7 +397,7 @@ void DestroyCache()
     delete[] cache;
 }
 
-// light-weight get function
+// light-weight get function, return the reference of cache[i]
 char* getCacheBlockRef(int UserId,int BlockId)
 {
     CACHE_ACCESSED++;

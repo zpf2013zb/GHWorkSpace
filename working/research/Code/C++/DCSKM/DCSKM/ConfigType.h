@@ -5,7 +5,7 @@
 //  Created by 秦旭 on 14-6-28.
 //  Copyright (c) 2014年 ZJU. All rights reserved.
 //
-
+// handle
 #ifndef __RKSK__ConfigType__
 #define __RKSK__ConfigType__
 
@@ -23,27 +23,46 @@
 class ConfigType
 {
 private:
-    std::map<std::string,std::string> cr;
+	// used to record all the config information
+    std::map<std::string,std::string> cr; 
 public:
+	// receive the information from file or cmd
     ConfigType(std::string& configFileName, int argc,char** argv);
     ~ConfigType();
+	// list all the config information of cr
     void ListConfig();
+	// get map file name with key "map"
     std::string getMapFileName();
+	// get data file name
     std::string getDataFileName();
+	// return the int value of "cachepages"
     int getParameterCachePages();
+	// return the int value of k 
     int getParameterK();
+	// return int value of "querykeywordsnumber"
     int getParameterQueryKeywordNumbers();
+	// return int value of "numberOfQueryPoints"
     int getParameterNumberOfQueryPoints();
+	// return int value of "OutlierDensity"
     int getParameterOutlierDensity();
+	// return int value of "AvgKeywordsNumberOfOutliers"
     int getParameterAvgKeywordsNumberOfOutliers();
+	// return the query file correspoding to data filename
     std::string getQueryFileName();
+	// return the queryresult file correspoding to query filename
     std::string getQueryResultFileName();
 private:
+	// read the config information from "config.prop"
     void AddConfigFromFile(std::string& configFileName);
+	// remove the space such as {'\t','\n','\f','\r',' '};
     void TrimSpace(char* str);
+	// // read the config information from cmd
     void AddConfigFromCmdLine(int argc,char** argv);
+	// return the float value of key,transfrom from str to float
     float getConfigFloat(std::string& key);
+	// return the int value of key,transfrom from str to int
     int getConfigInt(std::string& key);
+	// return the str value of key, no transform
     std::string getConfigStr(std::string& key);
 
 

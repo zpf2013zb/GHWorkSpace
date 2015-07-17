@@ -25,16 +25,17 @@
 
 using namespace std;
 
-
-
+// handle
 //Edge must existed on Road Network
 void getRandEdge(int &Ni,int &Nj,float &Edgedist)
 {
     int adjgrpaddr,adjsize=0;
     do
     {
+		// get the random edge 
         Ni=random()%NodeNum;
         adjgrpaddr=getAdjListGrpAddr(Ni);
+		// adjsize record the number of adjacency edges
         getFixedF(SIZE_A,Ref(adjsize),adjgrpaddr);
         if(adjsize>0)
         {
@@ -53,7 +54,7 @@ void getRandEdge(int &Ni,int &Nj,float &Edgedist)
     }
 
 }
-
+// generate the random query Q
 void genRandQ(struct QueryPoint &Q,unsigned long long keywordsSet,int topk)
 {
     float edgedist=0.0;
@@ -62,12 +63,12 @@ void genRandQ(struct QueryPoint &Q,unsigned long long keywordsSet,int topk)
     Q.k=topk;
     Q.keywords= keywordsSet;
 }
-
-
+// put all the query points to file
 void WriteQuery2File(vector<QueryPoint> Qset,const char* filename)
 {
     char tmpfilename[255];
     sprintf(tmpfilename,"%s",filename);
+	// delete the tmpfilename file
     remove(tmpfilename);
     FILE *f=fopen(tmpfilename,"w");
     if (f) {
@@ -85,10 +86,10 @@ void WriteQuery2File(vector<QueryPoint> Qset,const char* filename)
     }
     
 }
-
+// open and close the disk to get the basic information and write query to file 
 int main(int argc,char** argv)
 {
-//    Query File default to map_queryPoints_querykeywordsnumber_k_cachepages
+//  Query File default to map_queryPoints_querykeywordsnumber_k_cachepages
     string configFileName = "config.prop";
     ConfigType cr(configFileName,argc, argv);
     cr.ListConfig();

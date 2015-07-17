@@ -26,7 +26,7 @@ std::vector<unsigned long long> KeywordsGenerator::getKeywords(std::size_t total
         keywordsSet.reset();
         int numberOfKeywords = distribution(generator);
         int percent = random()%1000;
-        
+        // precent used for what?
         if (percent < 50) {
             
             while(keywordsSet.count() < numberOfKeywords)

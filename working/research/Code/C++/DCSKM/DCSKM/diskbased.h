@@ -19,6 +19,7 @@ int BlkLen;
 #define AdjFid 	4000
 #define Ref(obj) ((void*)&obj)
 
+// no use
 struct NodeStruct
 {
     char level;
@@ -26,7 +27,7 @@ struct NodeStruct
     int* key;
     int* son;
 };
-
+// no use
 NodeStruct* createNodeStruct()
 {
     NodeStruct* node=new NodeStruct();
@@ -36,7 +37,7 @@ NodeStruct* createNodeStruct()
     node->son=new int[i_capacity];
     return node;
 }
-
+// no use
 void ReadIndexBlock(BTree* bt,int block,NodeStruct* node)
 {
     int UserId=(bt==PtTree)?PtTid:AdjTid;
@@ -61,7 +62,7 @@ void ReadIndexBlock(BTree* bt,int block,NodeStruct* node)
         j += sizeof(int)+sizeof(int);
     }
 }
-
+// no use
 int inline pointQuery(BTree* bt,int key,int& TreeKey)
 {
     static NodeStruct* node=createNodeStruct();
@@ -262,7 +263,7 @@ void CloseDiskComm()
     DestroyFreqCache(FC_A);
     DestroyFreqCache(FC_P);
 }
-
+// no use
 void printSubTree(BTree* bt,NodeStruct* node,int indent)
 {
     char space[indent+1];
@@ -288,7 +289,7 @@ void printSubTree(BTree* bt,NodeStruct* node,int indent)
     }
     printf("\n");
 }
-
+//no use
 void printTree(BTree* bt)
 {
     NodeStruct* root_node=createNodeStruct();
@@ -301,7 +302,7 @@ void printTree(BTree* bt)
 FastArray<float> xcrd,ycrd;
 FILE** views;	//=fopen(visualf,"w");
 int Cnum;
-
+// no use
 void openVisualFiles(const char* nodename,const char* outprefix,int _Cnum)
 {
     char nodef[255],visualf[255];
@@ -332,7 +333,7 @@ void openVisualFiles(const char* nodename,const char* outprefix,int _Cnum)
         views[i]=fopen(visualf,"w");
     }
 }
-
+// no use
 void writeVisualRecord(int Ni,int Nj,float vP,float eDist,int Cid)
 {
     float x1,y1,x2,y2,x,y;
@@ -350,7 +351,7 @@ void writeVisualRecord(int Ni,int Nj,float vP,float eDist,int Cid)
     else
         fprintf(views[Cid],"%f %f\n",x,y);
 }
-
+// no use
 void closeVisualFiles()  	// close files
 {
     xcrd.clear();

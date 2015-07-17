@@ -177,7 +177,7 @@ BTree ::BTree(char *fname, int _b_length, int cache_size)
 // load an existing BTree
 BTree ::BTree(char *fname, int cache_size)
 {
-    file = new CachedBlockFile(fname, 0, cache_size);	// load file
+    file = new CachedBlockFile(fname, 0, cache_size);	// creat a new cache file
 
     // read header
     header = new char [file->get_blocklength()];

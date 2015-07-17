@@ -488,7 +488,7 @@ int main(int argc, char *argv[])
     ReadRealNetwork(cr.getMapFileName().c_str(),0);
 
     ConnectedGraphCheck();
-
+	
     GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
 
     printf("Avg keyword # per object:%f\n",float(num_K)/num_D);

@@ -182,5 +182,8 @@
     <ClCompile Include="utility.cc">
       <Filter>Preprocessing\Adjacency List</Filter>
     </ClCompile>
+    <ClCompile Include="testGenData.cpp">
+      <Filter>Preprocessing\Adjacency List</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

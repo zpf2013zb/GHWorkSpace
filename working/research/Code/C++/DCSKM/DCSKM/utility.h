@@ -1,6 +1,6 @@
 #ifndef __UTILITY
 #define __UTILITY
-
+// handle
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
@@ -54,33 +54,33 @@ void CheckFile(FILE* fp,const char* filename);
 //const char* getConfigStr(const char* key,ConfigType &cr,bool required=true,const char* _default=NULL);
 
 int Cardinality(BitStore* bs);	// cardinality of a set
-void printPattern(BitStore* bs);
-int getSetIndex(vector<string> &vec,char* str);
+void printPattern(BitStore* bs); // print the position of bitstore where is ture
+int getSetIndex(vector<string> &vec,char* str); // get the index of str, if no then put str into vector
 
-void AddAll(FastList<int> &S,FastList<int> &C);
-void RemoveAll(FastList<int> &S,FastList<int> &C);
+void AddAll(FastList<int> &S,FastList<int> &C); // add all the element of C to S
+void RemoveAll(FastList<int> &S,FastList<int> &C); // remove all the elements of C from S
 
-void InitZipfMaxVal(int maxnum,double theta);
-int zipf(double theta);
-double gaussian(double mean, double sigma);
+void InitZipfMaxVal(int maxnum,double theta); // compute the zipfMaxValue with maxnum and theta.
+int zipf(double theta); // given zipfMaxVal to compute the i between [0, maxnum]; 
+double gaussian(double mean, double sigma); // generate the data follow guassian distribution
 long poisson(long lambda);
-float AvgAbsMeanDev(vector<float> &S);
-float variance(vector<float> &S);
+float AvgAbsMeanDev(vector<float> &S); // return ((sum==0)?(1):(diff/sum));???
+float variance(vector<float> &S); //??
 
 //-----------
 // LRU buffer
 //-----------
 
 enum AccessMode {isData,isIndex};
-int getBlockLength();
-void InitCache(int csize);
-void RefreshCache();
-void DestroyCache();
-bool getCacheBlock(char* buffer,int UserId,int BlockId);
-void storeCacheBlock(char* buffer,int UserId,int BlockId,AccessMode mode);	// user's responsibility
+int getBlockLength(); // return the length of block
+void InitCache(int csize); // construct a cache space with size csize
+void RefreshCache(); // reset the cache 
+void DestroyCache(); // free the dynamic parameter
+bool getCacheBlock(char* buffer,int UserId,int BlockId); // get the block from cache to buffer
+void storeCacheBlock(char* buffer,int UserId,int BlockId,AccessMode mode);	// store the buffer to cache, may invoke the LRU strategy
 //void printPageAccess();
 int64_t printPageAccess();
-void RefreshStat();
+void RefreshStat(); // reset the state
 
 //----------
 // FreqCache
@@ -92,9 +92,9 @@ struct FreqCache
     int UserId,BlockId;
 };
 
-void InitFreqCache(FreqCache& fc);
-void storeFreqCache(FreqCache& fc,char* buf,int uid,int bid);
-bool inFreqCache(FreqCache& fc,int uid,int bid);
-void DestroyFreqCache(FreqCache& fc);
+void InitFreqCache(FreqCache& fc); // initial the freqCache
+void storeFreqCache(FreqCache& fc,char* buf,int uid,int bid); // store the buffer to fc
+bool inFreqCache(FreqCache& fc,int uid,int bid); // verify whether uid and bid in fc or not
+void DestroyFreqCache(FreqCache& fc); // destroy the freqCache
 
 #endif //__UTILITY

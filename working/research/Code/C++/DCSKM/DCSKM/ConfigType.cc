@@ -24,7 +24,7 @@ ConfigType::~ConfigType()
 
 void ConfigType::AddConfigFromFile(std::string& configFileName)
 {
-    const int LINE_LEN=1024;
+    const int LINE_LEN=1024; // max length of a line
     char line[LINE_LEN],key[LINE_LEN],value[LINE_LEN];
 
     std::ifstream br(CONFIG_PATH + configFileName);
@@ -64,7 +64,7 @@ void ConfigType::AddConfigFromCmdLine(int argc,char** argv)
         while ((i<argc)&&(argv[i][0]!='-')) i++;
         if (i+1<argc)
         {
-            char* key=&(argv[i][1]);
+            char* key=&(argv[i][1]); //??取址
             char* value=argv[i+1];
             TrimSpace(key);
             TrimSpace(value);
@@ -93,7 +93,6 @@ float ConfigType::getConfigFloat(std::string &key)
         value=atof(cr[key].c_str());
     else
     {
-
         std::cerr<<"Config key not found :"<<key;
         exit(1);
 
