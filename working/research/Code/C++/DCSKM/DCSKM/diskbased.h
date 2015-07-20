@@ -98,7 +98,7 @@ int inline pointQuery(BTree* bt,int key,int& TreeKey)
     }
     return -6;
 }
-
+// read the blockID from FC-cache-myfile
 char* getFlatBlock(FILE* myfile,int BlockId)
 {
     int UserId,FileSize;
@@ -137,8 +137,8 @@ int ADJGRP_HEADSIZE=sizeof(int);
 int ADJGRP_ITEMSIZE=2*sizeof(int)+sizeof(float);	// changed
 
 enum FixedF {SIZE_A,NI_P,NJ_P,DIST_P,SIZE_P};
-enum VarE {ADJNODE_A,DIST_A,PTKEY_A,PT_P,PT_VCT};
-
+enum VarE {ADJNODE_A,DIST_A,PTKEY_A,PT_P,PT_DIST,PT_ATTRIBUTE,PT_NOK,PT_VCT};
+// get the variant from the adjFile or PtFile, put the pos item from addr BaseAddr to buffer
 void getVarE(VarE type,void* buf,int BaseAddr,int pos)
 {
     // note default values !
@@ -155,27 +155,51 @@ void getVarE(VarE type,void* buf,int BaseAddr,int pos)
     }
     if (type==PTKEY_A) addr=VarBase+sizeof(int)+sizeof(float);
 
-    // for VarE in PtFile
+    // for VarE in PtFile is distance
     if (type==PT_P)
     {
         addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE;
+        f=PtFile;
+        //size=sizeof(float);
+    }
+	 if (type==PT_DIST)
+    {
+        addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE+sizeof(int);
         f=PtFile;
         size=sizeof(float);
     }
 
     //Add by Qin xu
     //for Keywords of  POI
-    if (type==PT_VCT)
+	
+	 if (type==PT_ATTRIBUTE)
     {
-        addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE+sizeof(float);
+        addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE+sizeof(int)+sizeof(float);
         f=PtFile;
-        size=sizeof(unsigned long long);
+        size=ATTRIBUTE_DIMENSION*sizeof(float);
+    }
+    if (type==PT_NOK)
+    {
+        addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE+sizeof(int)+sizeof(float)+ATTRIBUTE_DIMENSION*sizeof(float);
+        f=PtFile;
+        size=sizeof(int);
+    }
+	 if (type==PT_VCT) //????是不是只存放了一个指针
+    {
+        addr=BaseAddr+PTGRP_HEADSIZE+pos*PTGRP_ITEMSIZE+sizeof(int)+sizeof(float)+ATTRIBUTE_DIMENSION*sizeof(float);
+		int addrNOK = addr;
+		addr= sizeof(int);
+        f=PtFile;
+		int NOK;
+		char* BlockAddr=getFlatBlock(f,addrNOK/BlkLen);
+		memcpy(&NOK,BlockAddr+(addrNOK%BlkLen),sizeof(int));
+        size=sizeof(int)*NOK;
     }
 
     char* BlockAddr=getFlatBlock(f,addr/BlkLen);
     memcpy(buf,BlockAddr+(addr%BlkLen),size);
 }
-
+// put the head information from addr BaseAddr to buf
 void getFixedF(FixedF type,void* buf,int BaseAddr)
 {
     // note default values !
@@ -205,10 +229,12 @@ void getFixedF(FixedF type,void* buf,int BaseAddr)
     char* BlockAddr=getFlatBlock(f,addr/BlkLen);
     memcpy(buf,BlockAddr+(addr%BlkLen),size);
 }
-
+// return the NodeID address in AdjList, note the NodeID from 1
 int getAdjListGrpAddr(int NodeID)  	// using AdjFile
 {
-    int addr=sizeof(int)+NodeID*sizeof(int),GrpAddr;
+	//----------NodeID start from 1-----------
+    //int addr=sizeof(int)+NodeID*sizeof(int),GrpAddr;
+	int addr=NodeID*sizeof(int),GrpAddr;
     char* BlockAddr=getFlatBlock(AdjFile,addr/BlkLen);
     memcpy(Ref(GrpAddr),BlockAddr+(addr%BlkLen),sizeof(int));
     return GrpAddr;
@@ -221,7 +247,7 @@ int getFileSize(FILE* f)  	// side effect, setting f to begin
     fseek(f,0,SEEK_SET);
     return filesize;
 }
-
+// open the file and index
 void OpenDiskComm(const char* fileprefix,int _cachesize)
 {
     char tmpFileName[255];
@@ -240,6 +266,7 @@ void OpenDiskComm(const char* fileprefix,int _cachesize)
     CheckFile(PtFile,tmpFileName);
     PtFileSize=getFileSize(PtFile);
     sprintf(tmpFileName,"%s.p_bt",fileprefix);
+	// load btree information from file and construct 128 cache block
     PtTree=new BTree(tmpFileName, 128); // number of cached file entries: 128
     PtNum=PtTree->UserField;
 

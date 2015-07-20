@@ -104,6 +104,7 @@
     <ClCompile Include="btree.cc" />
     <ClCompile Include="ConfigType.cc" />
     <ClCompile Include="DCSKM.cpp" />
+    <ClCompile Include="DCSKMQ.cpp" />
     <ClCompile Include="EGTree.cpp" />
     <ClCompile Include="gendata.cc" />
     <ClCompile Include="genQueryPoint2File.cc" />

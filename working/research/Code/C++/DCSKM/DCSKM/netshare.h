@@ -5,6 +5,7 @@
 #include <bitset>
 // handle
 #define MAX_DIST 9999999
+#define ATTRIBUTE_DIMENSION 6
 int MAX_KEYWORDS = 64;
 
 int NodeNum;
@@ -12,31 +13,40 @@ int EdgeNum;
 // define the query point
 struct QueryPoint
 {
-    int k;
-    unsigned long long keywords; // ?? 和关键字有什么关系，利用二进制记录关键字信息，有的用0，没有用1
-    int Ni,Nj;
-    float dist_Ni;
+	int Ni,Nj;
+    float dist_Ni; // location
+    float distCnst; // distrance constraint	
+    //unsigned long long keywords; // ?? 和关键字有什么关系，利用二进制记录关键字信息，有的用0，没有用1
+    bitset<ATTRIBUTE_DIMENSION> subSpace; // query subspace
+	int nOfKwd;
+	vector<int> kwd; // keyword information
 };
 
 // output the query point to ostream
 ostream& operator<<(ostream& os,const QueryPoint& Q)
 {
-    os<<"("<<Q.Ni<<","<<Q.Nj<<")    ";
-    os<<bitset<64>(Q.keywords).to_string();
-    os<<"   "<<Q.k<<" "<<Q.dist_Ni;
+    os<<"("<<Q.Ni<<","<<Q.Nj<<")	";
+	os<<Q.dist_Ni<<"	"<<Q.distCnst<<"	";
+	os<<bitset<ATTRIBUTE_DIMENSION>(Q.subSpace).to_string()<<"	";
+	os<<Q.nOfKwd;
+	for(int i=0; i<Q.nOfKwd; i++) {
+		os<<"	"<<Q.kwd[i];
+	}
     return os;
     
 }
 // define the struct of POI point 
 struct POI
 {
-    int Ni,Nj;
-    int pre;//Refine use only ?? 
-    unsigned long long keywords;
-    float dist_Ni;
-    float dist_Nj;
-    float dist_toquery;
-    
+    //int Ni,Nj;
+	int poid;
+    //int pre;//Refine use only ?? 
+    //unsigned long long keywords;
+	float dist_toquery; 
+	float attr[ATTRIBUTE_DIMENSION];
+    //float dist_Ni;
+    //float dist_Nj;
+   
 };
 // redefine the () to compare the distance of query point to POI
 struct POIComparison
@@ -50,11 +60,14 @@ struct POIComparison
 // output the POI to ostream
 ostream& operator<<(ostream& os, const POI& poi)
 {
-    os<<"("<<poi.Ni<<","<<poi.Nj<<") ";
-    os<<bitset<64>(poi.keywords).to_string();
-    os<<" distNi:"<<poi.dist_Ni;
-    os<<" distQ:"<<poi.dist_toquery;
-    os<<" preNode:"<<poi.pre<<endl;
+    os<<poi.Ni<<"	"<<poi.dist_toquery;
+	for(int i=0; i<ATTRIBUTE_DIMENSION; i++) {
+		os<<"	"<<poi.attr[i];
+	}
+    //os<<bitset<64>(poi.keywords).to_string();
+    //os<<" distNi:"<<poi.dist_Ni;
+    //os<<" distQ:"<<poi.dist_toquery;
+    //os<<" preNode:"<<poi.pre<<endl;
     
     return os;
 }
@@ -75,6 +88,47 @@ struct DStepComparison
 
 typedef	priority_queue<DStepEvent,vector<DStepEvent>,DStepComparison> DStepQueue;
 
+
+struct edgePair
+{
+    int Ni;
+    int Nj;
+};
+
+struct edgeState 
+{
+	int vState;
+	float iDisToQuery;
+	float jDisToQuery;
+};
+
+struct eSComparison
+{
+    bool operator () (const edgePair& left, const edgePair& right) const
+    {
+		//return left.disToQuery > right.disToQuery;
+		if(left.Ni == right.Ni && left.Nj == right.Nj) return true;
+		return false;
+    }
+};
+
+struct dijkVisit 
+{
+	int N;
+	float disTQ;
+};
+//?????是不是按照最小顺序排列
+struct dVComparison
+{
+    bool operator () (const dijkVisit& left, const dijkVisit& right) const
+    {
+		//return left.disToQuery > right.disToQuery;
+		return left.disTQ > right.disTQ;
+    }
+};
+typedef	priority_queue<dijkVisit ,vector<dijkVisit>,dVComparison> dVQueue;
+
+
 struct point
 {
     int Ni,Nj,pos;
@@ -83,11 +137,15 @@ struct point
 //Modified by Qin Xu
 //Denote POI on RoadEdge
 
-// record the information of POI
+// record the information of POIcc
 struct InerNode
 {
+	int poid;
     float dis;
-    unsigned long long vct;//Vector of keywords denoted by 64-bit
+	int attr[ATTRIBUTE_DIMENSION];
+    //unsigned long long vct;//Vector of keywords denoted by 64-bit
+	int nOfK;
+	vector<int> kwd;
 };
 // record the edge information, identical to point file
 struct edge

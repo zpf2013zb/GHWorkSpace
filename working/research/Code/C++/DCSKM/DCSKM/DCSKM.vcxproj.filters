@@ -185,5 +185,8 @@
     <ClCompile Include="testGenData.cpp">
       <Filter>Preprocessing\Adjacency List</Filter>
     </ClCompile>
+    <ClCompile Include="DCSKMQ.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

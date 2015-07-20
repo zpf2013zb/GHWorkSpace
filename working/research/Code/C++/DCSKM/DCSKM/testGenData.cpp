@@ -160,7 +160,7 @@ void makePtFiles(FILE *ptFile,char* treefile)
             fwrite(&(e->Nj),1,sizeof(int),ptFile);
             fwrite(&(e->dist),1,sizeof(float),ptFile);
             fwrite(&(size),1,sizeof(int),ptFile);
-            fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile);
+            fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile); //???????????是不是要修改
             e->FirstRow=key;
             PtMaxKey=key+e->pts.size()-1;	// useful for our special ordering !
 
@@ -200,7 +200,7 @@ void makeAdjListFiles(FILE *alFile)
     }
 
     float distsum=0;
-    for (int Ni=0; Ni<NodeNum; Ni++)
+    for (int Ni=1; Ni<=NodeNum; Ni++)
     {
         size=AdjList[Ni].size();
         fwrite(&(size),1,sizeof(int),alFile);
@@ -304,16 +304,18 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
     PoiNum=0;	// to record the Poi num
 	KwdNum=0;   // to record the kwd num
 	int pid, nid, njd, distMinV, nOfKwd;
-	float attribute[ATR_DIMENSION];
-	memset(attribute, 0.0, sizeof(float)*ATR_DIMENSION);
+	float attribute[ATTRIBUTE_DIMENSION];
+	memset(attribute, 0.0, sizeof(float)*ATTRIBUTE_DIMENSION);
 
     while (!feof(cpoi)) {       
         fscanf(cpoi, "%d %d %d %d %f %f %f %f %f %f %d", &pid, &nid, &njd, &distMinV, &attribute[0],&attribute[1],&attribute[2],&attribute[3],&attribute[4],&attribute[5],&nOfKwd);
         PoiNum = std::max(PoiNum,pid);
 
 		InerNode tempNode;
+		tempNode.poid = pid;
         tempNode.dis = distMinV;
-        memcpy(tempNode.attribs, attribute, sizeof(float)*ATR_DIMENSION);
+		memcpy(tempNode.attr, attribute, sizeof(float)*ATTRIBUTE_DIMENSION);
+		tempNode.nOfK = nOfKwd;
 		tempNode.kwd = new int[nOfKwd];
 		int loop = 1;
 		KwdNum += nOfKwd;

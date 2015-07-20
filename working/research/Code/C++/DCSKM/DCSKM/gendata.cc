@@ -189,14 +189,14 @@ void makeAdjListFiles(FILE *alFile)
 
     // slotted header info.
     int addr=sizeof(int)+sizeof(int)*NodeNum;
-    for (int Ni=0; Ni<NodeNum; Ni++)
+    for (int Ni=1; Ni<=NodeNum; Ni++)
     {
         fwrite(&addr,1,sizeof(int),alFile);
         addr+=sizeof(int)+AdjList[Ni].size()*(2*sizeof(int)+sizeof(float));
     }
 
     float distsum=0;
-    for (int Ni=0; Ni<NodeNum; Ni++)
+    for (int Ni=1; Ni<=NodeNum; Ni++)
     {
         size=AdjList[Ni].size();
         fwrite(&(size),1,sizeof(int),alFile);
