@@ -111,9 +111,6 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="EGTree.h">
-      <Filter>Preprocessing\EGTree</Filter>
-    </ClInclude>
     <ClInclude Include="blk_file.h">
       <Filter>Preprocessing\Adjacency List</Filter>
     </ClInclude>
@@ -135,6 +132,9 @@
     <ClInclude Include="utility.h">
       <Filter>Preprocessing\Adjacency List</Filter>
     </ClInclude>
+    <ClInclude Include="egtree.h">
+      <Filter>Preprocessing\EGTree</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -142,12 +142,6 @@
     </ClCompile>
     <ClCompile Include="DCSKM.cpp">
       <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="EGTree.cpp">
-      <Filter>Preprocessing\EGTree</Filter>
-    </ClCompile>
-    <ClCompile Include="gtree_build.cpp">
-      <Filter>Preprocessing\GTree</Filter>
     </ClCompile>
     <ClCompile Include="gtree_query.cpp">
       <Filter>Preprocessing\GTree</Filter>
@@ -187,6 +181,12 @@
     </ClCompile>
     <ClCompile Include="DCSKMQ.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="egtree_build.cpp">
+      <Filter>Preprocessing\GTree</Filter>
+    </ClCompile>
+    <ClCompile Include="egtree.cpp">
+      <Filter>Preprocessing\EGTree</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

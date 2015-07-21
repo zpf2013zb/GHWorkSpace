@@ -3,6 +3,9 @@
 
 #include <queue>
 #include <bitset>
+#include <vector>
+
+using namespace std;
 // handle
 #define MAX_DIST 9999999
 #define ATTRIBUTE_DIMENSION 6
@@ -88,7 +91,7 @@ struct DStepComparison
 
 typedef	priority_queue<DStepEvent,vector<DStepEvent>,DStepComparison> DStepQueue;
 
-
+// for Dijkstra
 struct edgePair
 {
     int Ni;
@@ -155,6 +158,9 @@ struct edge
     float dist;
     FastArray<InerNode> pts;
     //float dLB,dUB;		// for gendata use only
+	//-----------for extend egtree
+	vector<int> kwds;
+	float attrBound[ATTRIBUTE_DIMENSION][2];
 };
 
 typedef map<int,edge*> EdgeMapType; // map node to edges

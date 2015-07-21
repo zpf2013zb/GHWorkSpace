@@ -295,8 +295,9 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
     PrintElapsed();
 
     fclose(cedge);
-
-
+	//-----------------------add summary information of kwd and attributes to edge
+	EdgeMapType::iterator iter=EdgeMap.begin();
+	while(iter != EdgeMap.)
 }
 
 

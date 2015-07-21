@@ -19,8 +19,46 @@ void options_setting(){
 	options[METIS_OPTION_NUMBERING] = 0;
 	// options[METIS_OPTION_DBGLVL] = 0;
 }
+void init_input(int nOfNode, EdgeMapType EdgeMap) {
+	nLeafNode = 0;
+	// process node information
+	printf("PROCESSING NODE...");
+	//fin = fopen(FILE_NODE,"r");
+	for(int i=0; i<nOfNode; i++) {
+		Node node;
+		node.isborder = false;
+		Nodes.push_back(node);
+	}
+	printf("COMPLETE. NODE_COUNT=%d\n", (int)Nodes.size());
 
-void init_input(){
+	// load edge
+	printf("PROCESSING EDGE...");
+	//fin = fopen(FILE_EDGE, "r");
+	int eid;
+	int snid, enid;
+	double weight;
+	int iweight;
+	noe = 0;
+	EdgeMapType::iterator iter=EdgeMap.begin();
+	while (iter!=EdgeMap.end()) {
+		edge* e=iter->second;
+		noe ++;
+		snid = e->Ni;
+		enid = e->Nj;
+		weight = e->dist;
+
+		iweight = (int) (weight * WEIGHT_INFLATE_FACTOR);
+		Nodes[snid].adjnodes.push_back( enid );
+		Nodes[snid].adjweight.push_back( iweight );
+		Nodes[enid].adjnodes.push_back( snid );
+		Nodes[enid].adjweight.push_back( iweight );		
+		iter++;
+	}
+	//fclose(fin);
+	printf("COMPLETE.\n");
+}
+/*
+void init_input(int nOfNode, const EdgeMapType EdgeMap){
 	FILE *fin;
 
 	// load node
@@ -54,6 +92,7 @@ void init_input(){
 	fclose(fin);
 	printf("COMPLETE.\n");
 }
+*/
 
 // transform original data format to that suitable for METIS
 void data_transform_init( set<int> &nset ){
@@ -116,8 +155,8 @@ void data_transform_init( set<int> &nset ){
 	part = new idx_t[nset.size()];
 }
 
-void init(){
-	init_input();
+void init(int nOfNode, const EdgeMapType EdgeMap){
+	init_input(nOfNode, EdgeMap);
 	options_setting();
 }
 
@@ -199,7 +238,7 @@ void build(){
 	for ( int i = 0; i < Nodes.size(); i++ ){
 		rootstatus.nset.insert(i);
 	}
-	buildstack.push( rootstatus );
+	buildstack.push( rootstatus );  
 
 	// start to build
 	unordered_map<int,int> presult;
@@ -219,10 +258,13 @@ void build(){
 		// check cardinality
 		if ( current.nset.size() <= LEAF_CAP ){
 			// build leaf node
+			nLeafNode++;
 			EGTree[current.tnid].isleaf = true;
 			EGTree[current.tnid].leafnodes.clear();
 			for ( set<int>::iterator it = current.nset.begin(); it != current.nset.end(); it++ ){
 				EGTree[current.tnid].leafnodes.push_back( *it );
+				//---------ÐÞ¸ÄpartID
+				//partID[*it] = current.tnid;
 			}
 			continue;
 		}
@@ -282,8 +324,7 @@ void build(){
 		}
 
 	}
-	
-	
+		
 }
 
 // dump EGTree index to file
@@ -628,11 +669,117 @@ void hierarchy_shortest_path_load(){
 	}
 	fclose(fin);
 }
+//---------------extend function of egtree
+void makePtFiles(FILE *ptFile,char* treefile)
+{
+    PtMaxUsing=true;
+    BTree* bt=initialize(treefile);
+    printf("making PtFiles\n");
 
-int main(){
+    int RawAddr=0,key=0,size;	// changed
+    EdgeMapType::iterator iter=EdgeMap.begin();
+    while (iter!=EdgeMap.end())
+    {
+        edge* e=iter->second;
+        if (e->pts.size()>0)  	// do not index empty groups
+        {
+            sort(e->pts.begin(),e->pts.end(),ComparInerNode());
+
+            RawAddr=ftell(ptFile);	// set addr to correct amt.
+            size=e->pts.size();
+            fwrite(&(e->Ni),1,sizeof(int),ptFile);
+            fwrite(&(e->Nj),1,sizeof(int),ptFile);
+            fwrite(&(e->dist),1,sizeof(float),ptFile);
+            fwrite(&(size),1,sizeof(int),ptFile);
+            fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile);
+            e->FirstRow=key;
+            PtMaxKey=key+e->pts.size()-1;	// useful for our special ordering !
+
+            //printf("(key,value)=(%d,%d)\n",key,RawAddr);
+            addentry(bt,&top_level,i_capacity,1,key,&num_written_blocks,RawAddr);
+            key+=sizeof(int)*3+sizeof(float);
+            key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
+        }
+        else
+            e->FirstRow=-1;		// also later used by AdjFile
+
+        iter++;
+    }
+    finalize(bt);
+    bt->UserField=num_D;
+    delete bt;
+    PtMaxUsing=false;
+}
+
+// Adj FlatFile Field:
+//		Header:	size(int)
+//		Entry:	Nk(int), eDist(float), PtGrpKey(int), PtSize(int)		changed
+void makeAdjListFiles(FILE *alFile)
+{
+    printf("making alFiles, dependency on makePtFiles\n");
+
+    int key=0,size,PtSize;
+    fwrite(&NodeNum,1,sizeof(int),alFile);
+
+    // slotted header info.
+    int addr=sizeof(int)+sizeof(int)*NodeNum;
+    for (int Ni=1; Ni<=NodeNum; Ni++)
+    {
+        fwrite(&addr,1,sizeof(int),alFile);
+        addr+=sizeof(int)+AdjList[Ni].size()*(2*sizeof(int)+sizeof(float));
+    }
+
+    float distsum=0;
+    for (int Ni=1; Ni<=NodeNum; Ni++)
+    {
+        size=AdjList[Ni].size();
+        fwrite(&(size),1,sizeof(int),alFile);
+
+        for (int k=0; k<AdjList[Ni].size(); k++)
+        {
+            int Nk=AdjList[Ni][k];	// Nk can be smaller or greater than Ni !!!
+            edge* e=EdgeMap[getKey(Ni,Nk)];
+            PtSize=e->pts.size();
+            fwrite(&Nk,1,sizeof(int),alFile);
+            fwrite(&(e->dist),1,sizeof(float),alFile);
+            fwrite(&(e->FirstRow),1,sizeof(int),alFile); // use FirstRow for other purpose ...
+            //printf("(Ni,Nj,dataAddr)=(%d,%d,%d)\n",Ni,Nk,e->FirstRow);
+
+            distsum+=e->dist;
+        }
+        key=Ni;
+    }
+    distsum=distsum/2;
+    printf("total edge dist: %f\n",distsum);
+    printf("total keywords num:%d\n",num_K);
+}
+
+void BuildBinaryStorage(const char* fileprefix)
+{
+    BlkLen=getBlockLength();
+    char tmpFileName[255];
+
+    FILE *ptFile,*edgeFile;
+    sprintf(tmpFileName,"%s.p_d",fileprefix);
+    remove(tmpFileName); // remove existing file
+    ptFile=fopen(tmpFileName,"w+");
+    sprintf(tmpFileName,"%s.p_bt",fileprefix);
+    remove(tmpFileName); // remove existing file
+    makePtFiles(ptFile,tmpFileName);
+
+    sprintf(tmpFileName,"%s.al_d",fileprefix);
+    remove(tmpFileName); // remove existing file
+    edgeFile=fopen(tmpFileName,"w+");
+    makeAdjListFiles(edgeFile);
+
+    fclose(ptFile);
+    fclose(edgeFile);
+}
+
+int mainFunction(int nOfNode, const EdgeMapType EdgeMap){ // main function{
 	// init
 	TIME_TICK_START
-	init();
+	init(int nOfNode, const EdgeMapType EdgeMap);
 	TIME_TICK_END
 	TIME_TICK_PRINT("INIT")
 

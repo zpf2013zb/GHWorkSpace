@@ -91,7 +91,7 @@
     <ClInclude Include="btree.h" />
     <ClInclude Include="ConfigType.h" />
     <ClInclude Include="diskbased.h" />
-    <ClInclude Include="EGTree.h" />
+    <ClInclude Include="egtree.h" />
     <ClInclude Include="KeywordsGenerator.h" />
     <ClInclude Include="netshare.h" />
     <ClInclude Include="stdafx.h" />
@@ -105,10 +105,10 @@
     <ClCompile Include="ConfigType.cc" />
     <ClCompile Include="DCSKM.cpp" />
     <ClCompile Include="DCSKMQ.cpp" />
-    <ClCompile Include="EGTree.cpp" />
+    <ClCompile Include="egtree.cpp" />
     <ClCompile Include="gendata.cc" />
     <ClCompile Include="genQueryPoint2File.cc" />
-    <ClCompile Include="gtree_build.cpp" />
+    <ClCompile Include="egtree_build.cpp" />
     <ClCompile Include="gtree_query.cpp" />
     <ClCompile Include="KeywordsGenerator.cc" />
     <ClCompile Include="RkBSK-query.cc" />
