@@ -4,7 +4,7 @@
 #include <queue>
 #include <bitset>
 #include <vector>
-
+#include <set>
 using namespace std;
 // handle
 #define MAX_DIST 9999999
@@ -22,7 +22,7 @@ struct QueryPoint
     //unsigned long long keywords; // ?? 和关键字有什么关系，利用二进制记录关键字信息，有的用0，没有用1
     bitset<ATTRIBUTE_DIMENSION> subSpace; // query subspace
 	int nOfKwd;
-	vector<int> kwd; // keyword information
+	set<int> kwd; // keyword information
 };
 
 // output the query point to ostream
@@ -148,7 +148,7 @@ struct InerNode
 	int attr[ATTRIBUTE_DIMENSION];
     //unsigned long long vct;//Vector of keywords denoted by 64-bit
 	int nOfK;
-	vector<int> kwd;
+	set<int> kwd;
 };
 // record the edge information, identical to point file
 struct edge
@@ -159,7 +159,7 @@ struct edge
     FastArray<InerNode> pts;
     //float dLB,dUB;		// for gendata use only
 	//-----------for extend egtree
-	vector<int> kwds;
+	set<int> kwds;
 	float attrBound[ATTRIBUTE_DIMENSION][2];
 };
 

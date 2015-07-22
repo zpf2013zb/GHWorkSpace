@@ -223,7 +223,7 @@ unordered_map<int,int> graph_partition( set<int> &nset ){
 }
 
 // egtree construction
-void build(){
+void build(EdgeMapType EdgeMap){
 	// init root
 	TreeNode root;
 	root.isleaf = false;
@@ -265,7 +265,33 @@ void build(){
 				EGTree[current.tnid].leafnodes.push_back( *it );
 				//---------修改partID
 				//partID[*it] = current.tnid;
-			}
+
+				//------------------------------计算整个区域的上下界和关键字
+				for(int i=0; i<AdjList[*it].size(); i++) {
+					int Ni=AdjList[*it][i];	// Nk can be smaller or greater than Ni !!!
+					edge* e=EdgeMap[getKey(*it,Ni)];
+
+					if(it == current.nset.begin()) { //直接初始化
+						for(int j=0; j<ATTRIBUTE_DIMENSION; j++) {
+							EGTree[current.tnid].attrBound[j][0] = e->attrBound[j][0];
+							EGTree[current.tnid].attrBound[j][0] = e->attrBound[j][1];
+						}
+						copy(e->kwds.begin(),e->kwds.end(),EGTree[current.tnid].union_kwd.begin());
+					} else {
+						for(int j=0; j<ATTRIBUTE_DIMENSION; j++) {
+							if(EGTree[current.tnid].attrBound[j][0]>e->attrBound[j][0]) {
+								EGTree[current.tnid].attrBound[j][0]=e->attrBound[j][0];
+							} 
+							if(EGTree[current.tnid].attrBound[j][1]<e->attrBound[j][1]) {
+								EGTree[current.tnid].attrBound[j][1]=e->attrBound[j][1];
+							} 			
+						}
+						set_union(e->kwds.begin(), e->kwds.end(), EGTree[current.tnid].union_kwd.begin(), EGTree[current.tnid].union_kwd.end(), EGTree[current.tnid].union_kwd.begin());
+					}
+
+				}//endfor i
+				
+			}//endfor it
 			continue;
 		}
 
@@ -368,7 +394,7 @@ void egtree_save(){
 }
 
 // load EGTree index from file
-void egtree_load(){
+void egtree_load(vector<TreeNode> EGTree){
 	// FILE_GTREE
 	FILE *fin = fopen( FILE_GTREE, "rb" );
 	int *buf = new int[ Nodes.size() ];
@@ -544,16 +570,58 @@ void hierarchy_shortest_path_calculation(){
 
 			cands.clear();
 			if ( EGTree[tn].isleaf ){
+				//sort lefenodes and union_borders
+				sort(EGTree[tn].leafnodes.begin(),EGTree[tn].leafnodes.end(),less());
+				sort(EGTree[tn].borders.begin(),EGTree[tn].borders.end(),less());
 				// cands = leafnodes
 				cands = EGTree[tn].leafnodes;
 				// union borders = borders;
 				EGTree[tn].union_borders = EGTree[tn].borders;
-			}
-			else{
+
+				//--------------record the mind information
+				vertex_pairs.clear();
+				
+				// for each border, do min dis
+				//int cc = 0;
+			
+				for ( int k = 0; k < EGTree[tn].union_borders.size(); k++ ){
+					//printf("DIJKSTRA...LEAF=%d BORDER=%d\n", tn, EGTree[tn].union_borders[k] );
+					result = dijkstra_candidate( EGTree[tn].union_borders[k], cands, graph );
+					//printf("DIJKSTRA...END\n");
+
+					// save to map
+					for ( int p = 0; p < result.size(); p ++ ){
+						EGTree[tn].mind.push_back( result[p] );
+						vertex_pairs[EGTree[tn].union_borders[k]][cands[p]] = result[p];
+					}
+				}
+			}else{
 				nset.clear();
 				for ( int k = 0; k < EGTree[tn].children.size(); k++ ){
 					cid = EGTree[tn].children[k];
 					nset.insert( EGTree[cid].borders.begin(), EGTree[cid].borders.end() );
+
+
+					//------------------------处理中间节点的信息,将多个孩子节点的值赋给它
+					
+
+					if(k == 0) { //直接初始化
+						for(int l=0; l<ATTRIBUTE_DIMENSION; l++) {
+							memcpy(EGTree[tn].attrBound,EGTree[cid].attrBound,sizeof(EGTree[tn].attrBound));
+						}
+						copy(EGTree[cid].union_kwd.begin(),EGTree[cid].union_kwd.end(),EGTree[tn].union_kwd.begin());
+					} else {
+						for(int l=0; l<ATTRIBUTE_DIMENSION; l++) {
+							if(EGTree[tn].attrBound[l][0]>EGTree[cid].attrBound[l][0]) {
+								EGTree[tn].attrBound[l][0]=EGTree[cid].attrBound[l][0];
+							} 
+							if(EGTree[tn].attrBound[l][1]<EGTree[cid].attrBound[l][1]) {
+								EGTree[tn].attrBound[l][1]=EGTree[cid].attrBound[l][1];
+							} 			
+						}
+						set_union(EGTree[cid].union_kwd.begin(), EGTree[cid].union_kwd.end(), EGTree[tn].union_kwd.begin(), EGTree[tn].union_kwd.end(), EGTree[tn].union_kwd.begin());
+					}
+
 				}
 				// union borders = cands;
 				
@@ -562,14 +630,37 @@ void hierarchy_shortest_path_calculation(){
 					cands.push_back( *it );
 				}
 				EGTree[tn].union_borders = cands;
+				//sort lefenodes and union_borders
+				sort(EGTree[tn].union_borders.begin(),EGTree[tn].union_borders.end(),less());
+				sort(cands.begin(),cands.end(),less());
+
+				//------------------------record the mind information
+				vertex_pairs.clear();
+				
+				// for each border, do min dis
+				//int cc = 0;
+			
+				for ( int k = 0; k < EGTree[tn].union_borders.size(); k++ ){
+					//printf("DIJKSTRA...LEAF=%d BORDER=%d\n", tn, EGTree[tn].union_borders[k] );
+					result = dijkstra_candidate( EGTree[tn].union_borders[k], cands, graph );
+					//printf("DIJKSTRA...END\n");
+
+					// save to map
+					for ( int p = 0; p < result.size(); p ++ ){
+						if(k<=p) {
+							EGTree[tn].mind.push_back( result[p] );
+						}
+						vertex_pairs[EGTree[tn].union_borders[k]][cands[p]] = result[p];
+					}
+				}
 			}
 				
 			// start to do min dis
 			vertex_pairs.clear();
 				
 			// for each border, do min dis
-			int cc = 0;
-
+			//int cc = 0;
+			
 			for ( int k = 0; k < EGTree[tn].union_borders.size(); k++ ){
 				//printf("DIJKSTRA...LEAF=%d BORDER=%d\n", tn, EGTree[tn].union_borders[k] );
 				result = dijkstra_candidate( EGTree[tn].union_borders[k], cands, graph );
@@ -669,112 +760,7 @@ void hierarchy_shortest_path_load(){
 	}
 	fclose(fin);
 }
-//---------------extend function of egtree
-void makePtFiles(FILE *ptFile,char* treefile)
-{
-    PtMaxUsing=true;
-    BTree* bt=initialize(treefile);
-    printf("making PtFiles\n");
 
-    int RawAddr=0,key=0,size;	// changed
-    EdgeMapType::iterator iter=EdgeMap.begin();
-    while (iter!=EdgeMap.end())
-    {
-        edge* e=iter->second;
-        if (e->pts.size()>0)  	// do not index empty groups
-        {
-            sort(e->pts.begin(),e->pts.end(),ComparInerNode());
-
-            RawAddr=ftell(ptFile);	// set addr to correct amt.
-            size=e->pts.size();
-            fwrite(&(e->Ni),1,sizeof(int),ptFile);
-            fwrite(&(e->Nj),1,sizeof(int),ptFile);
-            fwrite(&(e->dist),1,sizeof(float),ptFile);
-            fwrite(&(size),1,sizeof(int),ptFile);
-            fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile);
-            e->FirstRow=key;
-            PtMaxKey=key+e->pts.size()-1;	// useful for our special ordering !
-
-            //printf("(key,value)=(%d,%d)\n",key,RawAddr);
-            addentry(bt,&top_level,i_capacity,1,key,&num_written_blocks,RawAddr);
-            key+=sizeof(int)*3+sizeof(float);
-            key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
-        }
-        else
-            e->FirstRow=-1;		// also later used by AdjFile
-
-        iter++;
-    }
-    finalize(bt);
-    bt->UserField=num_D;
-    delete bt;
-    PtMaxUsing=false;
-}
-
-// Adj FlatFile Field:
-//		Header:	size(int)
-//		Entry:	Nk(int), eDist(float), PtGrpKey(int), PtSize(int)		changed
-void makeAdjListFiles(FILE *alFile)
-{
-    printf("making alFiles, dependency on makePtFiles\n");
-
-    int key=0,size,PtSize;
-    fwrite(&NodeNum,1,sizeof(int),alFile);
-
-    // slotted header info.
-    int addr=sizeof(int)+sizeof(int)*NodeNum;
-    for (int Ni=1; Ni<=NodeNum; Ni++)
-    {
-        fwrite(&addr,1,sizeof(int),alFile);
-        addr+=sizeof(int)+AdjList[Ni].size()*(2*sizeof(int)+sizeof(float));
-    }
-
-    float distsum=0;
-    for (int Ni=1; Ni<=NodeNum; Ni++)
-    {
-        size=AdjList[Ni].size();
-        fwrite(&(size),1,sizeof(int),alFile);
-
-        for (int k=0; k<AdjList[Ni].size(); k++)
-        {
-            int Nk=AdjList[Ni][k];	// Nk can be smaller or greater than Ni !!!
-            edge* e=EdgeMap[getKey(Ni,Nk)];
-            PtSize=e->pts.size();
-            fwrite(&Nk,1,sizeof(int),alFile);
-            fwrite(&(e->dist),1,sizeof(float),alFile);
-            fwrite(&(e->FirstRow),1,sizeof(int),alFile); // use FirstRow for other purpose ...
-            //printf("(Ni,Nj,dataAddr)=(%d,%d,%d)\n",Ni,Nk,e->FirstRow);
-
-            distsum+=e->dist;
-        }
-        key=Ni;
-    }
-    distsum=distsum/2;
-    printf("total edge dist: %f\n",distsum);
-    printf("total keywords num:%d\n",num_K);
-}
-
-void BuildBinaryStorage(const char* fileprefix)
-{
-    BlkLen=getBlockLength();
-    char tmpFileName[255];
-
-    FILE *ptFile,*edgeFile;
-    sprintf(tmpFileName,"%s.p_d",fileprefix);
-    remove(tmpFileName); // remove existing file
-    ptFile=fopen(tmpFileName,"w+");
-    sprintf(tmpFileName,"%s.p_bt",fileprefix);
-    remove(tmpFileName); // remove existing file
-    makePtFiles(ptFile,tmpFileName);
-
-    sprintf(tmpFileName,"%s.al_d",fileprefix);
-    remove(tmpFileName); // remove existing file
-    edgeFile=fopen(tmpFileName,"w+");
-    makeAdjListFiles(edgeFile);
-
-    fclose(ptFile);
-    fclose(edgeFile);
-}
 
 int mainFunction(int nOfNode, const EdgeMapType EdgeMap){ // main function{
 	// init

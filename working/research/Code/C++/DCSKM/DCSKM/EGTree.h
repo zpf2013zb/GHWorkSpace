@@ -65,6 +65,7 @@ typedef struct{
 typedef struct{
 //--------------basic structure of gtree
 	vector<int> borders; // the borders of this node
+	vector<float> refDistTQ; //不保存 d-dist(q,b)
 	vector<int> children;
 	bool isleaf;
 	vector<int> leafnodes;
@@ -78,9 +79,10 @@ typedef struct{
 	//vector<int> up_pos;
 	//vector<int> current_pos;
 // --------------extend structure of egtree for EGBU
-	vector<int> union_kwd;
+	set<int> union_kwd;
 	float attrBound[ATTRIBUTE_DIMENSION][2];
 	int pterToPF; //pointer to point file
+	float minDistTQ; //不保存
 // --------------extend structure of egtree for EGTD
 
 
@@ -138,9 +140,9 @@ void data_transform_init( set<int> &nset ); // transform original data format to
 void init(int nOfNode, EdgeMapType EdgeMap); // combining two steps above
 void finalize(); // free space
 unordered_map<int,int> graph_partition( set<int> &nset ); // graph partition
-void build(); // egtree construction
+void build(EdgeMapType EdgeMap); // egtree construction
 void egtree_save(); // dump gtree index to file
-void egtree_load();// load gtree index from file
+void egtree_load(vector<TreeNode> EGTree);// load gtree index from file
 vector<int> dijkstra_candidate( int s, vector<int> &cands, vector<Node> &graph ); // dijkstra search, used for single-source shortest path search WITHIN one gtree leaf node!
 void hierarchy_shortest_path_calculation(); // calculate the distance matrix
 void hierarchy_shortest_path_save(); // dump distance matrix into file

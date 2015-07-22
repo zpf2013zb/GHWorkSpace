@@ -4,6 +4,7 @@
 #include "ConfigType.h"
 #include "KeywordsGenerator.h"
 #include <random>
+#include<algorithm>
 #include <bitset>
 #include "egtree.h"
 #include <vector>
@@ -313,7 +314,7 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 	fwrite(&NodeNum,1,sizeof(int),alFile);
 	addr = addr + sizeof(int);
 	//vector<TreeNode>::iterator it=EGTree.begin();
-	for(; treeNodeID < EGTree.size; treeNodeID++) {
+	for(; treeNodeID < EGTree.size(); treeNodeID++) {
 		if(!EGTree[treeNodeID].isleaf) continue;
 		// is leaf node ,may be no use
 		sort(EGTree[treeNodeID].leafnodes.begin(),EGTree[treeNodeID].leafnodes.end(),less());
@@ -342,14 +343,14 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 				//attribute information
 				//fwrite( &nOfKwd, sizeof(int), 1, alFile );
 				//copy( e->attr, e->kwds.end(), buf );
-				fwrite( e->attr, sizeof(int), ATTRIBUTE_DIMENSION*2, alFile);
+				fwrite( e->attrBound, sizeof(int), ATTRIBUTE_DIMENSION*2, alFile);
 
 				fwrite(&(e->FirstRow),1,sizeof(int),alFile); // use FirstRow for other purpose ...
 				//printf("(Ni,Nj,dataAddr)=(%d,%d,%d)\n",Ni,Nk,e->FirstRow);
 				addr = addr+(nOfKwd+ATTRIBUTE_DIMENSION*2+3)*sizeof(int)+sizeof(float);
 				distsum+=e->dist;
 			}
-				key=Ni;
+				key=treeNodeID;
 			}
 	}
     distsum=distsum/2;
@@ -471,6 +472,34 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
         e->pts.push_back(tempNode);	
     }
 	fclose(cpoi);
+
+	//--------------------compute the lower&upper bound and kwds
+	EdgeMapType::iterator iter=EdgeMap.begin();
+	while(iter != EdgeMap.end()) {
+		edge *e = iter->second;
+		for(int i=0; i<e->pts.size(); i++) {
+			InerNode temp = e->pts[i];
+			if(i == 0) { //直接初始化
+				for(int j=0; j<ATTRIBUTE_DIMENSION; j++) {
+					e->attrBound[j][0] = temp.attr[j];
+					e->attrBound[j][1] = temp.attr[j];
+				}
+				copy(temp.kwd.begin(),temp.kwd.end(),e->kwds.begin());
+			} else {
+				for(int j=0; j<ATTRIBUTE_DIMENSION; j++) {
+					if(e->attrBound[j][0] > temp.attr[j]) {
+						e->attrBound[j][0] = temp.attr[j];
+					} 
+					if(e->attrBound[j][1] < temp.attr[j]) {
+						e->attrBound[j][1] = temp.attr[j];
+					}			
+				}
+				set_union(temp.kwd.begin(), temp.kwd.end(), e->kwds.begin(), e->kwds.end(), e->kwds.begin());
+			}
+
+		}
+		iter ++;
+	}
 }
 
 
