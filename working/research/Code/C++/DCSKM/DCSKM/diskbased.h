@@ -137,7 +137,7 @@ int ADJGRP_HEADSIZE=sizeof(int);
 int ADJGRP_ITEMSIZE=2*sizeof(int)+sizeof(float);	// changed
 
 enum FixedF {SIZE_A,NI_P,NJ_P,DIST_P,SIZE_P};
-enum VarE {ADJNODE_A,DIST_A,PTKEY_A,PT_P,PT_DIST,PT_ATTRIBUTE,PT_NOK,PT_VCT};
+enum VarE {ADJNODE_A,DIST_A,SUMKWD_A,SUMATTR_A,PTKEY_A,PT_P,PT_DIST,PT_ATTRIBUTE,PT_NOK,PT_VCT};
 // get the variant from the adjFile or PtFile, put the pos item from addr BaseAddr to buffer
 void getVarE(VarE type,void* buf,int BaseAddr,int pos)
 {

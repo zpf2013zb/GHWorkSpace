@@ -23,6 +23,7 @@ using namespace std;
 //#define halfVisited vector<int>
 int nOfDomiTest;
 int nOfEdgeExpd;
+int bottomToUp=1;
 
 CandidateSet cS;
 ResultSet rS;
@@ -545,7 +546,16 @@ void EABasedAlgorithm(const QueryPoint &Q) {
     //base2numnodeexpand+=roadnodecnt;
 }
 //计算s到cans的距离
-vector<float> dijkstra_candidate( QueryPoint &Q, vector<int> &cands, vector<TreeNode> &EGT ) {
+vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT ) {
+	//bottomToUp 由下至上构建distTQ
+	if(bottomToUp == 0) {
+		bottomToUp = 1;
+		int pid = paID[Q.Ni]; //两种情况，但都是等于Q.Ni
+
+
+	}
+
+
 }
 
 void EGBUAlgorithm(const QueryPoint &Q) {
@@ -556,6 +566,8 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 	vector<int> tempKwds;
 	set<int> visNodes;
 	int *tempKwd;
+	set<int> edgeSumKwds;
+	float edgeSumAttr[ATTRIBUTE_DIMENSION][2];
     float EdgeDist,PtDist;
 	// locate the treeNodeID
 	int trNodeIDi,trNodeIDj;
@@ -565,14 +577,81 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 
 	AdjGrpAddr=getAdjListGrpAddr(Ni);
     getFixedF(SIZE_A,Ref(AdjListSize),AdjGrpAddr);
+    AdjGrpAddr=getAdjListGrpAddr(Ni);
+    getFixedF(SIZE_A,Ref(AdjListSize),AdjGrpAddr);
     for (int i=0; i<AdjListSize; i++){
         getVarE(ADJNODE_A,Ref(NewNodeID),AdjGrpAddr,i);
         //getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
         if(NewNodeID == Nj){
             getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
             getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
-		}
-	}
+			getVarE(SUMKWD_A,&edgeSumKwds.begin(),AdjGrpAddr,i);
+			getVarE(SUMATTR_A,edgeSumAttr,AdjGrpAddr,i);
+
+			edgePair epi,epj;
+			edgeState esi,esj;
+			epi.Ni = 0;
+			epi.Nj = Q.Ni;
+			esi.vState = visited;
+			esi.iDisToQuery = 0;
+			esi.jDisToQuery = Q.dist_Ni;
+
+			epj.Ni = 0;
+			epj.Nj = Q.Nj;
+			esj.iDisToQuery = 0;
+			esj.jDisToQuery = EdgeDist-Q.dist_Ni;
+
+			visitedState[epi] = esi;
+			visitedState[epj] = esj;
+
+			if(!LcontianRIKwd(edgeSumKwds,Q.kwd)){
+				
+				break;
+			}
+			if(isBeBoundDominate(edgeSumAttr, cS, Q)){
+				
+				break;
+			}
+            nOfEdgeExpd++;
+
+            //cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
+            if(PtGrpKey==-1){
+                //cout<<"No POI existed on Edge where Q located."<<endl;
+            }
+            else {
+                getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+                //cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+                //Notice the order POI visited on edge
+                for(int j=0; j<PtNumOnEdge; j++){
+                    poicnt++;
+                    getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+                    getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+					
+					int num = sizeof(tempKwd)/sizeof(int);
+					for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+						int temp;
+						memcpy(&temp,tempKwd+loop,sizeof(int));
+						tempKwds.insert(temp);
+					}
+
+					if(LcontianRIKwd(tempKwds,Q.kwd)){
+                        POI tmp;
+						tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+						getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+						getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+						if(tmp.dist_toquery <= Q.distCnst) {
+							if(isBeDominate(tmp, cS, Q)) {
+							} else {
+								cS.push_back(tmp);
+							}
+						}             
+                    }// endif
+                }
+                
+            }// endelse
+        }
+    }
 
 	trNodeIDi = paID[Ni].part;
 	trNodeIDj = paID[Nj].part;
@@ -600,6 +679,221 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 		}
 	}
 	//------------&&&&&&&&&&&&&&内部节点处理
+	while(!dvq.empty()) {
+		dijkVisit tmpDV = dvq.top();
+		dvq.pop();
+		if(paID[tmpDV.N].part!=currTNID) continue;
+		if(tmpDV.disTQ <= Q.distCnst) {
+			AdjGrpAddr=getAdjListGrpAddr(tmpDV.N);
+			getFixedF(SIZE_A,Ref(AdjListSize),AdjGrpAddr);
+			for (int i=0; i<AdjListSize; i++){
+				getVarE(ADJNODE_A,Ref(NewNodeID),AdjGrpAddr,i);
+				getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+				getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
+				edgePair ep;
+				ep.Ni = NewNodeID<tmpDV.N?NewNodeID:tmpDV.N;
+				ep.Nj = NewNodeID>tmpDV.N?NewNodeID:tmpDV.N;
+				map<edgePair, edgeState, eSComparison>::iterator iter;
+				iter = visitedState.find(ep);
+				if(iter!=visitedState.end()) {
+					if(visitedState[ep].vState == hVisited) {// 计算两端的POI，修改状态
+						visitedState[ep].vState == visited;
+						//---添加距离visitedState
+						if(tmpDV.N < NewNodeID) {
+							visitedState[ep].iDisToQuery = tmpDV.disTQ;
+						} else {
+							visitedState[ep].jDisToQuery = tmpDV.disTQ;
+						}
+						//从两端加入POIs
+						if(PtGrpKey==-1){
+						//cout<<"No POI existed on Edge where Q located."<<endl;
+						} else {
+
+							getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+							//Notice the order POI visited on edge
+							for(int j=0; j<PtNumOnEdge; j++){
+								poicnt++;
+								getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+								getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+								int num = sizeof(tempKwd)/sizeof(int);
+								for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+									int temp;
+									memcpy(&temp,tempKwd+loop,sizeof(int));
+									tempKwds.insert(temp);
+								}
+
+								if(LcontianRIKwd(tempKwds,Q.kwd)){
+									POI tmp;
+									//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+									float d1,d2;
+									d1 = visitedState[ep].iDisToQuery + PtDist;
+									d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
+									tmp.dist_toquery = d1<d2 ? d1:d2;
+									
+									getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+									getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+									if(tmp.dist_toquery <= Q.distCnst) {
+										if(isBeDominate(tmp, cS, Q)) {
+										} else {
+											cS.push_back(tmp);
+										}
+									}             
+								}// endif
+							}
+						}
+					} else if(visitedState[ep].vState == visited) { //修改距离
+						//---添加距离visitedState
+						if(tmpDV.N < NewNodeID) {
+							visitedState[ep].iDisToQuery = tmpDV.disTQ;
+						} else {
+							visitedState[ep].jDisToQuery = tmpDV.disTQ;
+						}
+					} else {
+
+					}
+				} else {
+					edgePair ep;
+					edgeState es;
+					if(tmpDV.N < NewNodeID) {
+						ep.Ni = tmpDV.N;
+						ep.Nj = NewNodeID;
+						es.iDisToQuery = tmpDV.disTQ;
+						es.jDisToQuery = INFINITE_MAX;
+					} else {
+						ep.Ni = NewNodeID;
+						ep.Nj = tmpDV.N;
+						es.iDisToQuery = INFINITE_MAX;
+						es.jDisToQuery = tmpDV.disTQ;
+					}
+					if(distTQ.find(NewNodeID)!=distTQ.end()){
+						if(distTQ[NewNodeID]>(tmpDV.disTQ+EdgeDist)) {
+							distTQ[NewNodeID] = tmpDV.disTQ+EdgeDist;
+						}
+					} else {
+						distTQ[NewNodeID] = tmpDV.disTQ+EdgeDist;
+					}
+					if(distTQ[NewNodeID]<=Q.distCnst) {
+						//将整条边加入
+						es.vState = visited;
+						visitedState[ep] = es;
+
+
+
+						if(PtGrpKey==-1){
+						//cout<<"No POI existed on Edge where Q located."<<endl;
+						} else {
+							getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+							//获得关键字信息和属性信息，直接过滤
+							if(!LcontianRIKwd(edgeSumKwds,Q.kwd)) {
+								//这条边不加
+								continue;
+							}
+							if(isBeBoundDominate(edgeSumAttr, cS, Q)) {
+								//这条边不加
+								continue;
+							}
+							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+							//Notice the order POI visited on edge
+							for(int j=0; j<PtNumOnEdge; j++){
+								poicnt++;
+								getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+								getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+								int num = sizeof(tempKwd)/sizeof(int);
+								for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+									int temp;
+									memcpy(&temp,tempKwd+loop,sizeof(int));
+									tempKwds.insert(temp);
+								}
+
+								if(LcontianRIKwd(tempKwds,Q.kwd)){
+									POI tmp; //这时候可能不是真实距离,也不会影响结果
+									if(tmpDV.N<NewNodeID) {
+										tmp.dist_toquery = tmpDV.disTQ+PtDist;
+									} else {
+										tmp.dist_toquery = tmpDV.disTQ+EdgeDist-PtDist;
+									}
+									
+								
+									getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+									getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+									if(tmp.dist_toquery <= Q.distCnst) {
+										if(isBeDominate(tmp, cS, Q)) {
+										} else {
+											cS.push_back(tmp);
+										}
+									}             
+								}// endif
+							}
+						}
+
+					} else {// 如果只有部分在边上，hVisited
+						if(!LcontianRIKwd(edgeSumKwds,Q.kwd)) {
+							//这条边不加
+							es.vState = visited;
+							visitedState[ep] = es;
+							continue;
+						}
+						if(isBeBoundDominate(edgeSumAttr, cS, Q)) {
+							//这条边不加
+							es.vState = visited;
+							visitedState[ep] = es;
+							continue;
+						}
+						es.vState = hVisited;
+						visitedState[ep] = es;
+					}
+				}
+
+				//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+				//getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
+				if(PtGrpKey==-1){
+						//cout<<"No POI existed on Edge where Q located."<<endl;
+				} else {
+
+					getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+					//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+					//Notice the order POI visited on edge
+					for(int j=0; j<PtNumOnEdge; j++){
+						poicnt++;
+						getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+						getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+						int num = sizeof(tempKwd)/sizeof(int);
+						for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+							int temp;
+							memcpy(&temp,tempKwd+loop,sizeof(int));
+							tempKwds.insert(temp);
+						}
+
+						if(LcontianRIKwd(tempKwds,Q.kwd)){
+							POI tmp;
+							tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+							getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+							getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+							if(tmp.dist_toquery <= Q.distCnst) {
+								if(isBeDominate(tmp, cS, Q)) {
+								} else {
+									cS.push_back(tmp);
+								}
+							}             
+						}// endif
+					}
+				}
+
+			
+			}// end for
+		}// endif
+	}// end while
+
+
+
+
 
 
 	//upward
@@ -660,21 +954,202 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 		if(tn.isleaf) { //如果是叶子节点，处理
 			// utilize the mind to retrieve this node meet distance constraint
 			//---------&&&&&&&&&&&&计算满足距离约束的node集合，并
+			vector<float> tempDist;
+			for(int k=0; k<tn.leafnodes.size(); k++) {
+				tempDist.push_back(INFINITE_MAX);
+			}
 			for(int k=0; k<tn.refDistTQ.size(); k++) {
-				if(tn.refDistTQ[k]>=0) {//说明可能存在满足距离约束的相邻边
-					//获取所有满足距离约束的node
-					int nOfLeaf = tn.refDistTQ.size();
-					// test each possible nodes
-					for(int t=0; t<nOfLeaf; t++) {
-						//对于每个符合距离约束的node处理						
-						//--------------------------&&&&&&&&&&&&&&&note？不是真实距离
-					}//endfor
+				//float mindist = INFINITE_MAX;
+				if(tn.refDistTQ[k]<0) continue;
+				int pos,size = tn.leafnodes.size();
+				float tempD;
+				for(int t=0; t<tn.leafnodes.size(); t++) {
+					pos = k*size+t;
+					tempD = Q.distCnst-tn.refDistTQ[k]+tn.mind[pos];
+					if(tempD<=Q.distCnst) {
+						if(tempD<tempDist[t]) tempDist[t] = tempD;
+					}
+				}
+			}
+			//构建dvq
+			for(int k=0; k<tempDist.size(); k++) {
+				if(tempDist[k]>Q.distCnst) continue;
+				//为每个符合条件的点展开
+				/*dijkVisit dv;
+				dv.N = tn.leafnodes[k];
+				dv.disTQ = tempDis[k];
+				dvq.push(dv);*/
+				AdjGrpAddr=getAdjListGrpAddr(tn.leafnodes[k]);
+				getFixedF(SIZE_A,Ref(AdjListSize),AdjGrpAddr);
+				for (int i=0; i<AdjListSize; i++){
+					getVarE(ADJNODE_A,Ref(NewNodeID),AdjGrpAddr,i);
+					getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+					getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
+					getVarE(SUMKWD_A,&edgeSumKwds.begin(),AdjGrpAddr,i);
+					getVarE(SUMATTR_A,edgeSumAttr,AdjGrpAddr,i);
+					edgePair ep;
+					ep.Ni = NewNodeID<tn.leafnodes[k]?NewNodeID:tn.leafnodes[k];
+					ep.Nj = NewNodeID>tn.leafnodes[k]?NewNodeID:tn.leafnodes[k];
+					map<edgePair, edgeState, eSComparison>::iterator iter;
+					iter = visitedState.find(ep);
+					if(iter!=visitedState.end()) {
+						if(visitedState[ep].vState == hVisited) {// 计算两端的POI，修改状态
+							visitedState[ep].vState == visited;
+							//---添加距离visitedState
+							if(tn.leafnodes[k] < NewNodeID) {
+								visitedState[ep].iDisToQuery = tempDis[k];
+							} else {
+								visitedState[ep].jDisToQuery = tempDis[k];
+							}
+							//从两端加入POIs
+							if(PtGrpKey==-1){
+							//cout<<"No POI existed on Edge where Q located."<<endl;
+							} else {
+
+								getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+								//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+								//Notice the order POI visited on edge
+								for(int j=0; j<PtNumOnEdge; j++){
+									poicnt++;
+									getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+									getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+									int num = sizeof(tempKwd)/sizeof(int);
+									for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+										int temp;
+										memcpy(&temp,tempKwd+loop,sizeof(int));
+										tempKwds.insert(temp);
+									}
+
+									if(LcontianRIKwd(tempKwds,Q.kwd)){
+										POI tmp;
+										//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+										float d1,d2;
+										d1 = visitedState[ep].iDisToQuery + PtDist;
+										d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
+										tmp.dist_toquery = d1<d2 ? d1:d2;
+									
+										getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+										getVarE(PT_P,&tmp.poid,PtGrpKey,j);
 						
+										if(tmp.dist_toquery <= Q.distCnst) {
+											if(isBeDominate(tmp, cS, Q)) {
+											} else {
+												cS.push_back(tmp);
+											}
+										}             
+									}// endif
+								}
+							}
+						} else if(visitedState[ep].vState == visited) { //修改距离
+							//---添加距离visitedState
+							if(tmpDV.N < NewNodeID) {
+								visitedState[ep].iDisToQuery = tempDis[k];
+							} else {
+								visitedState[ep].jDisToQuery = tempDis[k];
+							}
+						} else {
+							
+					
+						}
+					} else {
+						//判断是否要加入到ep中			
+							edgeState es;
+							if(tn.leafnodes[k] < NewNodeID) {
+								ep.Ni = tn.leafnodes[k];
+								ep.Nj = NewNodeID;
+								es.iDisToQuery = tempDis[k];
+								es.jDisToQuery = INFINITE_MAX;
+							} else {
+								ep.Ni = NewNodeID;
+								ep.Nj = tn.leafnodes[k];
+								es.iDisToQuery = INFINITE_MAX;
+								es.jDisToQuery = tempDis[k];
+							}
+							if(distTQ.find(NewNodeID)!=distTQ.end()){
+								if(distTQ[NewNodeID]>(tempDis[k]+EdgeDist)) {
+									distTQ[NewNodeID] = tempDis[k]+EdgeDist;
+								}
+							} else {
+								distTQ[NewNodeID] = tempDis[k]+EdgeDist;
+							}
+							if(distTQ[NewNodeID]<=Q.distCnst) {
+								//将整条边加入
+								es.vState = visited;
+								visitedState[ep] = es;
+
+								if(PtGrpKey==-1){
+								//cout<<"No POI existed on Edge where Q located."<<endl;
+								} else {
+									//获得关键字信息和属性信息，直接过滤
+									if(!LcontianRIKwd(edgeSumKwds,Q.kwd)) {
+										//这条边不加
+										continue;
+									}
+									if(isBeBoundDominate(edgeSumAttr, cS, Q)) {
+										//这条边不加
+										continue;
+									}
+
+									//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+									//Notice the order POI visited on edge
+									for(int j=0; j<PtNumOnEdge; j++){
+										poicnt++;
+										getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+										getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+										int num = sizeof(tempKwd)/sizeof(int);
+										for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+											int temp;
+											memcpy(&temp,tempKwd+loop,sizeof(int));
+											tempKwds.insert(temp);
+										}
+
+										if(LcontianRIKwd(tempKwds,Q.kwd)){
+											POI tmp; //这时候可能不是真实距离,也不会影响结果
+											if(tmpDV.N<NewNodeID) {
+												tmp.dist_toquery = tmpDV.disTQ+PtDist;
+											} else {
+												tmp.dist_toquery = tmpDV.disTQ+EdgeDist-PtDist;
+											}
+									
+								
+											getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+											getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+											if(tmp.dist_toquery <= Q.distCnst) {
+												if(isBeDominate(tmp, cS, Q)) {
+												} else {
+													cS.push_back(tmp);
+												}
+											}             
+										}// endif
+									}
+								}
+
+							} else {// 如果只有部分在边上，hVisited
+								//if被关键字等过滤掉，则直接算是visited
+								//获得关键字信息和属性信息，直接过滤
+								if(!LcontianRIKwd(edgeSumKwds,Q.kwd)) {
+									//这条边不加
+									es.vState = visited;
+									visitedState[ep] = es;
+									continue;
+								}
+								if(isBeBoundDominate(edgeSumAttr, cS, Q)) {
+									//这条边不加
+									es.vState = visited;
+									visitedState[ep] = es;
+									continue;
+								}
+								es.vState = hVisited;
+								visitedState[ep] = es;
+							}
+						}
 
 
-					}//endfor t
-				}//endif
-			}//endfor k
+					}//endif
+				}//endfor
 
 		} else { //不是叶子节点处理
 			for(int i=0; i<tn.children.size();) {
@@ -695,7 +1170,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 					}
 					//compute the minDistTQ
 					vector<float> distTQ;
-					distTQ = dijkstra_candidate( Q, EGT[cid].borders, EGT );
+					distTQ = dijkstra_candidate( Q, cid, EGT );
 					float minDist = INFINITE_MAX;
 					for(int k=0; k<distTQ.size(); k++) {
 						if(distTQ[k] < minDist) minDist = distTQ[k];
@@ -704,6 +1179,76 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 					EGT[cid].minDistTQ = minDist;
 					//----------------&&&&&&&
 					tnq.push(EGT[cid]);
+				}
+			}
+		}
+	}
+	// handel hvisited
+	// 处理hVisited
+
+	map<edgePair, edgeState, eSComparison>::iterator iterhV;
+	for(iterhV=visitedState.begin(); iterhV!=visitedState.end(); ++iterhV) {
+		if(iterhV->second.vState == hVisited) {//处理只有距离当前节点满足距离约束的POI
+			int nodei,nodej;
+			if(iterhV->second.iDisToQuery == INFINITE_MAX) {
+				nodei = iterhV->first.Nj;
+				nodej = iterhV->first.Ni;
+			} else {
+				nodei = iterhV->first.Nj;
+				nodej = iterhV->first.Ni;
+			}
+			//获取边上的POI
+			AdjGrpAddr=getAdjListGrpAddr(nodei);
+			getFixedF(SIZE_A,Ref(AdjListSize),AdjGrpAddr);
+			for (int i=0; i<AdjListSize; i++){
+				getVarE(ADJNODE_A,Ref(NewNodeID),AdjGrpAddr,i);
+				//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+				if(NewNodeID == nodej){
+					getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+					getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
+
+					nOfEdgeExpd++;
+
+					//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
+					if(PtGrpKey==-1){
+						//cout<<"No POI existed on Edge where Q located."<<endl;
+					}
+					else {
+						getFixedF(SIZE_P,Ref(PtNumOnEdge),PtGrpKey);
+						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+						//Notice the order POI visited on edge
+						for(int j=0; j<PtNumOnEdge; j++){
+							poicnt++;
+							getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
+
+							getVarE(PT_VCT,tempKwd,PtGrpKey,j);
+							int num = sizeof(tempKwd)/sizeof(int);
+							for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
+								int temp;
+								memcpy(&temp,tempKwd+loop,sizeof(int));
+								tempKwds.push_back(temp);
+							}
+
+							if(LcontianRIKwd(tempKwds,Q.kwd)){
+								POI tmp;
+								if(nodei<nodej){
+									tmp.dist_toquery = iterhV->second.iDisToQuery+PtDist;
+								} else {
+									tmp.dist_toquery = iterhV->second.jDisToQuery+EdgeDist-PtDist;
+								}
+								getVarE(PT_ATTRIBUTE,tmp.attr,PtGrpKey,j);
+								getVarE(PT_P,&tmp.poid,PtGrpKey,j);
+						
+								if(tmp.dist_toquery <= Q.distCnst) {
+									if(isBeDominate(tmp, cS, Q)) {
+									} else {
+										cS.push_back(tmp);
+									}
+								}             
+							}// endif
+						}
+                
+					}// endelse
 				}
 			}
 		}

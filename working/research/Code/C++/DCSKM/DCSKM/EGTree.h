@@ -65,7 +65,8 @@ typedef struct{
 typedef struct{
 //--------------basic structure of gtree
 	vector<int> borders; // the borders of this node
-	vector<float> refDistTQ; //不保存 d-dist(q,b)
+	vector<float> refDistTQ; //不保存 d-dist(q,b) for external
+	vector<float> distTQ;//不保存dist(q,b) for node on the path
 	vector<int> children;
 	bool isleaf;
 	vector<int> leafnodes;
