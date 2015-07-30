@@ -24,7 +24,7 @@ using namespace std;
 int nOfDomiTest;
 int nOfEdgeExpd;
 int bottomToUp=1;
-
+float queryEdgeDist;
 CandidateSet cS;
 ResultSet rS;
 
@@ -53,7 +53,7 @@ struct TreeNodeC
 
 typedef	priority_queue<TreeNode,vector<TreeNode>,TreeNodeC> TreeNodeQ;
 TreeNodeQ tnq;
-
+vector<int> pathID;
 
 
 // to verify whether R contains by L
@@ -547,15 +547,159 @@ void EABasedAlgorithm(const QueryPoint &Q) {
 }
 //计算s到cans的距离
 vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT ) {
-	//bottomToUp 由下至上构建distTQ
+	//bottomToUp 由下至上构建distTQ，保存路径
 	if(bottomToUp == 0) {
 		bottomToUp = 1;
-		int pid = paID[Q.Ni]; //两种情况，但都是等于Q.Ni
+		int pid = paID[Q.Ni].part; //假设查询点位于treenode 内部
+		pathID.push_back(pid);
+		vector<int>::iterator it;
+		//计算两端点到边界的距离，去最小
+		EGT[pid].minDistTQ = INFINITE_MAX;
+		for(int i=0; i<EGT[pid].borders.size(); i++) {
+			distTQ[i] = INFINITE_MAX;
+		}
+		int posi,posj,size=EGT[pid].leafnodes.size();
+		it = find(EGT[pid].leafnodes.begin(),EGT[pid].leafnodes.end(),Q.Ni);
+		posi = (*it);
+		it = find(EGT[pid].leafnodes.begin(),EGT[pid].leafnodes.end(),Q.Nj);
+		posj = (*it);
+		for(int i=0; i<EGT[pid].borders.size(); i++) {
+			float distI = Q.dist_Ni+EGT[pid].mind[i*size+posi];
+			float distJ = queryEdgeDist-Q.dist_Ni+EGT[pid].mind[i*size+posj];
+			if(distI<distJ) {
+				EGT[pid].distTQ[i]=distI;
+				if(distI<EGT[pid].minDistTQ) EGT[pid].minDistTQ=distI;
+			} else {
+				EGT[pid].distTQ[i]=distJ;
+				if(distJ<EGT[pid].minDistTQ) EGT[pid].minDistTQ=distJ;
+			}
+		}
+		int preID;
+		while(pid!=0&&EGT[pid].minDistTQ<Q.distCnst) {
+			preID = pid;
+			pid=EGT[pid].father;
+			pathID.push_back(pid);
+			//计算父节点的距离
+			//vector<int>::iterator it;
+			//计算两端点到边界的距离，去最小
+			EGT[pid].minDistTQ = INFINITE_MAX;
+			for(int i=0; i<EGT[pid].borders.size(); i++) {
+				EGT[pid].distTQ[i] = INFINITE_MAX;
+			}
+			size=EGT[pid].union_borders.size();
+			int posb,posu;
+			//对于该层的每个border，计算从下一层到该层的最短距离
+			for(int i=0; i<EGT[pid].borders; i++) {
+				for(int j=0; j<EGT[preID].borders; j++) {
+					//定位两个node在union_border中位置		
+					it = find(EGT[pid].union_borders.begin(),EGT[pid].union_borders.end(),EGT[preID].borders[j]);
+					posb = (*it);
+					it = find(EGT[pid].union_borders.begin(),EGT[pid].union_borders.end(),EGT[pid].borders[i]);
+					posu = (*it);
+					float mindPos;
+					if(posb<posu) {
+						mindPos = (posu*(posu+1))/2+posb;
+					} else {
+						mindPos = (posb*(posb+1))/2+posu;
+					}
+					if((EGT[preID].distTQ[j]+EGT[pid].mind[mindPos])<EGT[pid].distTQ[i]) {
+						EGT[pid].distTQ[i] = EGT[preID].distTQ[j]+EGT[pid].mind[mindPos];
+					}
+				}//endfor
+				if(EGT[pid].distTQ[i]<EGT[pid].minDistTQ) EGT[pid].minDistTQ = EGT[pid].distTQ[i];
+			}//endfor
 
-
+		}//endwhile
+	}//endif
+	//找最小共同父节点,构建最短路径
+	int commonID = tid;
+	vector<int> ctPathID;
+	ctPathID.push_back(commonID);
+	while(true) {
+		if(find(pathID.begin(),pathID.end(),commonID)==pathID.end()) {
+			commonID = EGT[commonID].father;
+			ctPathID.push_back(commonID);
+		}else {
+			break;
+		}
 	}
+	//寻找pathID上commonID的下一层
+	int pathid = paID[Q.Ni].part;
+	while(EGT[pathid].father!=commonID) {
+		pathid = EGT[pathid].father;
+	}
+	//开始右转去连接其他边，这时候需要从上到下处理了
+	//单独处理右边最上面的节点
+	int upMostID = ctPathID.size()-1;
+	if(EGT[upMostID].distTQ.size()!=EGT[upMostID].borders.size()) {
+		EGT[upMostID].minDistTQ = INFINITE_MAX;
+		for(int i=0; i<EGT[upMostID].borders.size(); i++) {
+			EGT[upMostID].distTQ[i] = INFINITE_MAX;
+		}
+		int posutm,pospth,sizeC = EGT[commonID].union_borders.size();
+		for(int i=0; i<EGT[upMostID].borders.size(); i++) {
+			for(int j=0; j<EGT[pathid].borders.size(); j++) {
+				//定位
+				vector<int>::iterator itr;
+				itr = find(EGT[commonID].union_borders.begin(),EGT[commonID].union_borders.end(),EGT[upMostID].borders[i]);
+				posutm = (*it);
+				itr = find(EGT[commonID].union_borders.begin(),EGT[commonID].union_borders.end(),EGT[pathid].borders[j]);
+				pospth = (*it);
+				float mindPos;
+				if(posutm<pospth) {
+					mindPos = (pospth*(pospth+1))/2+posutm;
+				} else {
+					mindPos = (posutm*(posutm+1))/2+pospth;
+				}
+				if((EGT[pathid].distTQ[j]+EGT[upMostID].mind[mindPos])<EGT[upMostID].distTQ[i]) {
+					EGT[upMostID].distTQ[i] = EGT[pathid].distTQ[j]+EGT[upMostID].mind[mindPos];
+				}
+			}
+			if(EGT[upMostID].distTQ[i]<EGT[upMostID].minDistTQ) EGT[upMostID].minDistTQ = EGT[upMostID].distTQ[i];
+		}
+	}
+	//从导数第二个开始
+	int uBID,fID;
+	for(int k=ctPathID.size()-2; k>=0; k--) {
+		uBID = ctPathID[k];
+		fID = EGT[uBID].father;
+		//preID = pid;
+		//pid=EGT[pid].father;
+		//pathID.push_back(pid);
+		//计算父节点的距离
+		//vector<int>::iterator it;
+		//计算两端点到边界的距离，去最小
+		if(EGT[uBID].distTQ.size()==EGT[uBID].borders.size()) continue;
+		EGT[uBID].minDistTQ = INFINITE_MAX;
+		for(int i=0; i<EGT[uBID].borders.size(); i++) {
+			EGT[uBID].distTQ[i] = INFINITE_MAX;
+		}
+		int sizef=EGT[fID].union_borders.size();
+		int posdc,posdf;
+		//对于该层的每个border，计算从下一层到该层的最短距离
+		for(int i=0; i<EGT[uBID].borders; i++) {
+			for(int j=0; j<EGT[fID].borders; j++) {
+				//定位两个node在union_border中位置		
+				it = find(EGT[fID].union_borders.begin(),EGT[fID].union_borders.end(),EGT[uBID].borders[i]);
+				posdc = (*it);
+				it = find(EGT[fID].union_borders.begin(),EGT[fID].union_borders.end(),EGT[fID].borders[j]);
+				posdf = (*it);
+				float mindPos;
+				if(posdc<posdf) {
+					mindPos = (posdf*(posdf+1))/2+posdc;
+				} else {
+					mindPos = (posdc*(posdc+1))/2+posdf;
+				}
+				if((EGT[fID].distTQ[j]+EGT[fID].mind[mindPos])<EGT[uBID].distTQ[i]) {
+					EGT[uBID].distTQ[i] = EGT[fID].distTQ[j]+EGT[fID].mind[mindPos];
+				}
+			}
+			if(EGT[uBID].distTQ[i]<EGT[uBID].minDistTQ) EGT[uBID].minDistTQ = EGT[uBID].distTQ[i];
+		}//endfor
 
+	}//endfor
 
+	//求最短路径
 }
 
 void EGBUAlgorithm(const QueryPoint &Q) {
@@ -584,6 +728,8 @@ void EGBUAlgorithm(const QueryPoint &Q) {
         //getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
         if(NewNodeID == Nj){
             getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
+			//记录查询边距离
+			queryEdgeDist = EdgeDist;
             getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
 			getVarE(SUMKWD_A,&edgeSumKwds.begin(),AdjGrpAddr,i);
 			getVarE(SUMATTR_A,edgeSumAttr,AdjGrpAddr,i);
@@ -665,7 +811,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 
 		dvq.push(dvi);
 		dvq.push(dvj);
-	} else { //查询点在边界边上面
+	} /*else { //查询点在边界边上面
 		if(trNodeIDi < trNodeIDj) {
 			currTNID = trNodeIDi;
 			dvi.N = Q.Ni;
@@ -677,7 +823,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 			dvj.disTQ = EdgeDist-Q.dist_Ni;
 			dvq.push(dvj);
 		}
-	}
+	}*/
 	//------------&&&&&&&&&&&&&&内部节点处理
 	while(!dvq.empty()) {
 		dijkVisit tmpDV = dvq.top();

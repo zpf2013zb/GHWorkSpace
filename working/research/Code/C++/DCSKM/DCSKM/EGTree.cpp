@@ -358,6 +358,7 @@ void egtree_save(){
 	// FILE_GTREE
 	FILE *fout = fopen( FILE_GTREE, "wb" );
 	int *buf = new int[ Nodes.size() ];
+	float *buff = new float[Nodes.size()];
 	for ( int i = 0; i < EGTree.size(); i++ ){
 		// borders
 		int count_borders = EGTree[i].borders.size();
@@ -378,8 +379,75 @@ void egtree_save(){
 		fwrite( buf, sizeof(int), count_leafnodes, fout );
 		// father
 		fwrite( &EGTree[i].father, sizeof(int), 1, fout );
+
+		//**************************************************
+		//保存EGBU和EGTD信息
+
+		// union_border
+		int count_unionBorder = EGTree[i].union_borders.size();
+		fwrite(&count_unionBorder, sizeof(int), 1, fout);
+		copy(EGTree[i].union_borders.begin(), EGTree[i].union_borders.end(), buf);
+		fwrite(buf, sizeof(int), count_unionBorder, fout);
+		// mind
+		int count_mind = EGTree[i].mind.size();
+		fwrite(&count_mind, sizeof(float), 1, fout);
+		copy(EGTree[i].mind.begin(), EGTree[i].mind.end(), buff);
+		fwrite(buff, sizeof(float), count_mind, fout);
+		// union_kwd
+		int count_unionKwd = EGTree[i].union_kwd.size();
+		fwrite(&count_unionKwd, sizeof(int), 1, fout);
+		copy(EGTree[i].union_kwd.begin(), EGTree[i].union_kwd.end(), buf);
+		fwrite(buf, sizeof(int), count_unionKwd, fout);
+		// attrBound
+		//int count_leafnodes = EGTree[i].leafnodes.size();
+		//fwrite(&count_leafnodes, sizeof(int), 1, fout);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		fwrite(EGTree[i].attrBound, sizeof(float), ATTRIBUTE_DIMENSION*2, fout);
+		//perToPF
+		//int count_leafnodes = EGTree[i].leafnodes.size();
+		//fwrite(&count_leafnodes, sizeof(int), 1, fout);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		fwrite(&EGTree[i].pterToPF, sizeof(int), 1, fout);
+		// editKwd;
+		int count_editKwd = EGTree[i].editKwd.size();
+		fwrite(&count_editKwd, sizeof(int), 1, fout);
+		int tempKwd;
+		set<set<int>> ::iterator itEdit = EGTree[i].editKwd.begin();
+		for (; itEdit != EGTree[i].editKwd.end(); itEdit++) {
+			set<int> temp = *itEdit;
+			tempKwd = temp.size();
+			fwrite(&tempKwd, sizeof(int), 1, fout);
+			set<int> ::iterator it = temp.begin();
+			int kwd;
+			for (; it != temp.end(); it++) {
+				kwd = *it;
+				fwrite(&kwd, sizeof(int), 1, fout);
+			}
+		}
+		copy(EGTree[i].editKwd.begin(), EGTree[i].editKwd.end(), buf);
+		fwrite(buf, sizeof(int), count_editKwd, fout);
+		// locSky
+		int count_locSky = EGTree[i].locSky.size();
+		fwrite(&count_locSky, sizeof(int), 1, fout);
+		map<int, locSkyline> ::iterator itLoc = EGTree[i].locSky.begin();
+		for (; itLoc != EGTree[i].locSky.end(); itLoc++) {
+			int key = itLoc->first;
+			locSkyline value = itLoc->second;
+			fwrite(&key, sizeof(int), 1, fout);
+			fwrite(value.blockID, sizeof(int), ATTRIBUTE_DIMENSION, fout);
+			fwrite(value.skylineBtBound, sizeof(float), ATTRIBUTE_DIMENSION, fout);
+			fwrite(value.skylineUpBound, sizeof(float), ATTRIBUTE_DIMENSION, fout);
+		}
+		copy(EGTree[i].locSky.begin(), EGTree[i].locSky.end(), buf);
+		fwrite(buf, sizeof(int), count_locSky, fout);
 	}
 	fclose(fout);
+
+	//**************************************************
+	//保存EGBU和EGTD信息
+
+
+
 
 	// FILE_NODES_GTREE_PATH
 	fout = fopen( FILE_NODES_GTREE_PATH, "wb" );
@@ -398,6 +466,7 @@ void egtree_load(vector<TreeNode> EGTree){
 	// FILE_GTREE
 	FILE *fin = fopen( FILE_GTREE, "rb" );
 	int *buf = new int[ Nodes.size() ];
+	float *buff = new float[Nodes.size()];
 	int count_borders, count_children, count_leafnodes;
 	bool isleaf;
 	int father;
@@ -432,10 +501,78 @@ void egtree_load(vector<TreeNode> EGTree){
 		fread( &father, sizeof(int), 1, fin );
 		tn.father = father;
 
+		//**************************************************
+		//加载EGBU和EGTD信息
+
+		// union_border
+		int count_unionBorder;
+		fread(&count_unionBorder, sizeof(int), 1, fin);
+		fread(buf, sizeof(int), count_unionBorder, fin);
+		for (int i = 0; i < count_unionBorder; i++) {
+			tn.union_borders.push_back(buf[i]);
+		}
+		// mind
+		int count_mind;
+		fread(&count_mind, sizeof(float), 1, fin);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		fread(buff, sizeof(float), count_mind, fin);
+		for (int i = 0; i < count_mind; i++) {
+			tn.mind.push_back(buff[i]);
+		}
+		// union_kwd
+		int count_unionKwd;
+		fread(&count_unionKwd, sizeof(int), 1, fin);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		fread(buf, sizeof(int), count_unionKwd, fin);
+		for (int i = 0; i < count_unionKwd; i++) {
+			tn.union_kwd.insert(buf[i]);
+		}
+		// attrBound
+		//int count_leafnodes = EGTree[i].leafnodes.size();
+		fread(tn.attrBound, sizeof(float), ATTRIBUTE_DIMENSION * 2, fin);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		//fwrite(buf, sizeof(int), count_leafnodes, fin);
+
+		//perToPF
+		//int count_leafnodes = EGTree[i].leafnodes.size();
+		fread(&tn.pterToPF, sizeof(int), 1, fin);
+		//copy(EGTree[i].leafnodes.begin(), EGTree[i].leafnodes.end(), buf);
+		//fread(buf, sizeof(int), count_leafnodes, fin);
+
+		// editKwd;
+		int count_editKwd;
+		fread(&count_editKwd, sizeof(int), 1, fin);
+		int tempKwd;
+		for (int i = 0; i < count_editKwd; i++) {
+			fread(&tempKwd, sizeof(int), 1, fin);
+			set<int> tmp;
+			int kwd;
+			for (int t = 0; t < tempKwd; t++) {
+				fread(&kwd, sizeof(int), 1, fin);
+				tmp.insert(kwd);
+			}
+			tn.editKwd.insert(tmp);
+		}
+
+		// locSky
+		int count_locSky ;
+		fread(&count_locSky, sizeof(int), 1, fin);
+		for (int k = 0; k < count_locSky; k++) {
+			int key;
+			locSkyline ls;
+			fread(&key, sizeof(int), 1, fin);
+			fread(ls.blockID, sizeof(int), ATTRIBUTE_DIMENSION, fin);
+			fread(&ls.skylineBtBound, sizeof(float), ATTRIBUTE_DIMENSION, fin);
+			fread(&ls.skylineUpBound, sizeof(float), ATTRIBUTE_DIMENSION, fin);
+		}
 		EGTree.push_back(tn);
 	}
 	fclose(fin);
 	
+	//**************************************************
+	//加载EGBU和EGTD信息
+
+
 	// FILE_NODES_GTREE_PATH
 	int count;
 	fin = fopen( FILE_NODES_GTREE_PATH, "rb" );
@@ -528,6 +665,219 @@ vector<int> dijkstra_candidate( int s, vector<int> &cands, vector<Node> &graph )
 	return output;
 }
 
+//test is be dominate
+// smaller is better
+bool rdominatel(InerNode left, InerNode right) {
+	int size = ATTRIBUTE_DIMENSION;
+	bool lDr = true;
+	bool rDl = true;
+	int equal = 0;
+	for (int i = 0; i < size; i++) {
+		if (left.attr[i] < right.attr[i]) rDl = false;
+		if (left.attr[i] > right.attr[i]) lDr = false;
+		if (left.attr[i] == right.attr[i]) equal++;
+	}
+	if (lDr && (equal != size)) { //dominate local
+		return false;
+	}
+		
+	if (rDl) { //
+		return true;
+	}
+	
+}
+
+bool sortBySize(InerNode left, InerNode right) {
+	if (left.kwd.size()>right.kwd.size()) return true;
+	else return false;
+}
+ 
+bool sortByKSize(set<int> left, set<int> right) {
+	if (left.size()>right.size()) return true;
+	else return false;
+}
+
+int editDistanceRTL(set<int> kwd1, set<int> kwd2) {
+	int n = kwd1.size();
+	int m = kwd2.size();
+	set<int> difference;
+	// contain in kwd1 not in kwd2, n>=m
+	if (n > m) {
+		set_difference(kwd1.begin(), kwd1.end(), kwd2.begin(), kwd2.end(), difference.begin());
+	}
+	else {
+		set_difference(kwd2.begin(), kwd2.end(), kwd1.begin(), kwd1.end(), difference.begin());
+	}
+	return difference.size();
+}
+
+
+void handleKwdAttr(int tn, vector<InerNode> nodeInerNode) {
+	//first handle kwd
+	vector<InerNode> temp(nodeInerNode);
+	sort(temp.begin(), temp.end(), sortBySize);
+	vector<InerNode>::iterator itiT = temp.begin();
+	vector<InerNode>::iterator itjT;
+
+	//------------------------注意，这里面很可能会有问题，访问同时删除---------------------
+	for (; itiT != temp.end();) {
+		InerNode iNi = *itiT;
+		for (itjT = itiT + 1; itjT != temp.end();) {
+			InerNode iNj = *itjT;
+			if (editDistanceRTL(iNi.kwd, iNj.kwd)<iNi.kwd.size()*edDis) {			
+				itjT = temp.erase(itjT); 
+			}
+			else { // l can represent r
+				   // remove r 
+				itjT++;
+			}
+		}
+		itiT++;
+	}
+	// 保存kwd信息
+
+	vector<InerNode>::iterator itKwd = temp.begin();
+	for (; itKwd != temp.end(); itKwd++) {
+		set<int> tmpKwd = itKwd->kwd;
+		//kwdC kc;
+		//kc.kwdCombination = tmpKwd;
+		EGTree[tn].editKwd.insert(tmpKwd);
+	}
+
+	//then handle attr
+
+	vector<InerNode>::iterator iti = nodeInerNode.begin();
+	vector<InerNode>::iterator itj;
+	for (; iti != nodeInerNode.end(); ) {
+		InerNode iNi = *iti;
+		for (itj=iti+1; itj != nodeInerNode.end(); ) {
+			InerNode iNj = *itj;
+			if (rdominatel(iNi, iNj)) {
+				iti++;
+			}
+			else { // l dominate r
+				// remove r 
+				itj = nodeInerNode.erase(itj);
+			}
+			
+		}
+	}
+
+	// 计算block
+	for (int i = 0; i < nodeInerNode.size(); i++) {
+		InerNode inode = nodeInerNode[i];
+		int num[ATTRIBUTE_DIMENSION];
+		int mapKey = 0;
+		for (int j = 0; j < ATTRIBUTE_DIMENSION; j++) {
+			
+			if (inode.attr[j] > 0.0 && inode.attr[j] <= 0.2) {
+				num[j] = 1;
+			}
+			else if (inode.attr[j] <= 0.4) {
+				num[j] = 2;
+			}
+			else if (inode.attr[j] <= 0.6) {
+				num[j] = 3;
+			}
+			else if (inode.attr[j] <= 0.8) {
+				num[j] = 4;
+			}
+			else {
+				num[j] = 5;
+			}
+			mapKey = mapKey * 10 + num[j];
+		}
+		if (EGTree[tn].locSky.find(mapKey)!= EGTree[tn].locSky.end()) {//已经有了
+			locSkyline ls = EGTree[tn].locSky[mapKey];
+			for (int t = 0; t < ATTRIBUTE_DIMENSION; t++) {
+				if (ls.skylineBtBound[t] > num[t]) ls.skylineBtBound[t] = inode.attr[t];
+				if (ls.skylineUpBound[t] < num[t]) ls.skylineUpBound[t] = inode.attr[t];
+			}
+		}
+		else { //不存在,新建
+			locSkyline ls;
+			for (int t = 0; t < ATTRIBUTE_DIMENSION; t++) {
+				ls.skylineBtBound[t] = inode.attr[t];
+				ls.skylineUpBound[t] = inode.attr[t];
+				ls.blockID[t] = num[t];
+			}
+			EGTree[tn].locSky[mapKey] = ls;
+		}
+	}
+	
+}
+
+// combine the information of child node to tn
+void handleINKwdAddr(int tn) {
+	set<set<int>> unionEditKwd; //used to record the 
+	map<int, locSkyline> unionLocSky;
+	for (int k = 0; k < EGTree[tn].children.size(); k++) {
+		int cid = EGTree[tn].children[k];
+		set_union(EGTree[cid].editKwd.begin(), EGTree[cid].editKwd.end(), unionEditKwd.begin(), unionEditKwd.end(), unionEditKwd.begin());
+		set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionEditKwd.begin());
+	}
+	// handle kwd information 
+	sort(unionEditKwd.begin(), unionEditKwd.end(), sortByKSize);
+	set<set<int>>::iterator itiT = unionEditKwd.begin();
+	set<set<int>>::iterator itjT;
+
+	//------------------------注意，这里面很可能会有问题，访问同时删除---------------------
+	for (; itiT != unionEditKwd.end();) {
+		set<int> iNi = *itiT;
+		for (itjT = ++itiT; itjT != unionEditKwd.end();) {
+			itiT--; //--------------note this change-------------
+			set<int> iNj = *itjT;
+			if (editDistanceRTL(iNi, iNj)<iNi.size()*edDis) {
+				itjT = unionEditKwd.erase(itjT);
+			}
+			else { // l can represent r
+				   // remove r 
+				itjT++;
+			}
+		}
+		itiT++;
+	}
+	// 保存kwd信息
+
+	set<set<int>>::iterator itKwd = unionEditKwd.begin();
+	for (; itKwd != unionEditKwd.end(); itKwd++) {
+		set<int> tmpKwd = *itKwd;
+		//kwdC kc;
+		//kc.kwdCombination = tmpKwd;
+		EGTree[tn].editKwd.insert(tmpKwd);
+	}
+
+	// handle attr information
+	for (int k = 0; k < EGTree[tn].children.size(); k++) {
+		int cid = EGTree[tn].children[k];
+		//set_union(EGTree[cid].editKwd.begin(), EGTree[cid].editKwd.end(), unionEditKwd.begin(), unionEditKwd.end(), unionEditKwd.begin());
+		if (k == 0) {
+			set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionEditKwd.begin());
+		} 
+		else {
+			map<int, locSkyline>::iterator iterLocSkyline = EGTree[cid].locSky.begin();
+			for (; iterLocSkyline != EGTree[cid].locSky.end(); iterLocSkyline++ ) {
+				int key = iterLocSkyline->first;
+				locSkyline value = iterLocSkyline->second;
+				if (EGTree[tn].locSky.find(key) != EGTree[tn].locSky.end()) {//已经存在
+					for (int t = 0; t < ATTRIBUTE_DIMENSION; t++) {
+						if (EGTree[tn].locSky[key].skylineBtBound[t] > value.skylineBtBound[t]) EGTree[tn].locSky[key].skylineBtBound[t] = value.skylineBtBound[t];
+						if (EGTree[tn].locSky[key].skylineUpBound[t] < value.skylineUpBound[t]) EGTree[tn].locSky[key].skylineUpBound[t] = value.skylineUpBound[t];
+					}
+				} 
+				else { //不存在直接加入进去
+					EGTree[tn].locSky[key] = value;
+				}
+			}
+		}
+		
+	}
+	
+}
+
+
+
+
 // calculate the distance matrix, algorithm shown in section 5.2 of paper
 void hierarchy_shortest_path_calculation(){
 	// level traversal
@@ -538,8 +888,8 @@ void hierarchy_shortest_path_calculation(){
 	current.push_back(0);
 	treenodelevel.push_back(current);
 	// put all the nodes into treenodelevel according to their levels
-	vector<int> mid;
-	while( current.size() != 0 ){
+	vector<int> mid; 
+ 	while( current.size() != 0 ){
 		mid = current;
 		current.clear();
 		for ( int i = 0; i < mid.size(); i++ ){
@@ -563,6 +913,8 @@ void hierarchy_shortest_path_calculation(){
 	int s, t, tn, nid, cid, weight;
 	vector<int> tnodes, tweight;
 	set<int> nset;
+	//set<set<int>> nodeKwd;// 关键字信息等到该节点处理完成后统一处理，而关键字信息一样
+	vector<InerNode> nodeInerNode;
 
 	for ( int i = treenodelevel.size() - 1; i >= 0; i-- ){
 		for ( int j = 0; j < treenodelevel[i].size(); j++ ){
@@ -595,9 +947,37 @@ void hierarchy_shortest_path_calculation(){
 						vertex_pairs[EGTree[tn].union_borders[k]][cands[p]] = result[p];
 					}
 				}
+
+				//---------------extend for EGTD Algorithm-----------------
+				int keyID;
+				for (int k = 0; k < EGTree[tn].leafnodes.size(); k++) {
+					// for each leafnode we handle each adjacent edge of it
+					int nodei = EGTree[tn].leafnodes[k];
+					int adjSize = AdjList[nodei].size();
+					for (int p = 0; p < adjSize; p++) {
+						int nodej = AdjList[nodei][p];
+						keyID = getKey(nodei, nodej);
+						if (visitedEdgeKey.count(keyID) == 0) {// this edge has not been visited
+							visitedEdgeKey.insert(keyID);
+							edge *e = EdgeMap[keyID];
+							vector<InerNode> inode = e->pts;
+							for (int b = 0; b < inode.size(); b++) {
+								InerNode tempN = inode[b];
+								//set<int> poiKwd = tempN.kwd;
+								//nodeKwd.insert(tempN.kwd);
+								nodeInerNode.push_back(tempN);
+							}
+
+						}
+					}
+
+					//统一处理所有的InterNode信息
+					handleKwdAttr(tn,nodeInerNode);
+				}
 			}else{
+				
 				nset.clear();
-				for ( int k = 0; k < EGTree[tn].children.size(); k++ ){
+				for (int k = 0; k < EGTree[tn].children.size(); k++) {
 					cid = EGTree[tn].children[k];
 					nset.insert( EGTree[cid].borders.begin(), EGTree[cid].borders.end() );
 
@@ -610,6 +990,13 @@ void hierarchy_shortest_path_calculation(){
 							memcpy(EGTree[tn].attrBound,EGTree[cid].attrBound,sizeof(EGTree[tn].attrBound));
 						}
 						copy(EGTree[cid].union_kwd.begin(),EGTree[cid].union_kwd.end(),EGTree[tn].union_kwd.begin());
+
+						//------------------extend for EGTD----------------------
+						// handle kwd
+						//EGTree[tn].editKwd = EGTree[cid].editKwd;
+
+						// handle attr
+						//EGTree[tn].locSky = EGTree[cid].locSky;
 					} else {
 						for(int l=0; l<ATTRIBUTE_DIMENSION; l++) {
 							if(EGTree[tn].attrBound[l][0]>EGTree[cid].attrBound[l][0]) {
@@ -620,9 +1007,16 @@ void hierarchy_shortest_path_calculation(){
 							} 			
 						}
 						set_union(EGTree[cid].union_kwd.begin(), EGTree[cid].union_kwd.end(), EGTree[tn].union_kwd.begin(), EGTree[tn].union_kwd.end(), EGTree[tn].union_kwd.begin());
+						// handle kwd 
+						//handleINKwdAddr(tn);
+						// handle attr
 					}
 
 				}
+				//---------------extend for EGTD---------------
+				handleINKwdAddr(tn);
+
+
 				// union borders = cands;
 				
 				cands.clear();
@@ -653,8 +1047,11 @@ void hierarchy_shortest_path_calculation(){
 						vertex_pairs[EGTree[tn].union_borders[k]][cands[p]] = result[p];
 					}
 				}
+
+
+
 			}
-				
+			//------------------------------以前代码-----------------------------------
 			// start to do min dis
 			vertex_pairs.clear();
 				
@@ -673,6 +1070,7 @@ void hierarchy_shortest_path_calculation(){
 				}
 			}
 
+			
 			// IMPORTANT! after all border finished, degenerate graph,###用于简化Dijkstra算法距离计算
 			// first, remove inward edges
 			for ( int k = 0; k < EGTree[tn].borders.size(); k++ ){
@@ -760,7 +1158,6 @@ void hierarchy_shortest_path_load(){
 	}
 	fclose(fin);
 }
-
 
 int mainFunction(int nOfNode, const EdgeMapType EdgeMap){ // main function{
 	// init

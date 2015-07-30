@@ -43,6 +43,9 @@ long long ts, te;
 // egtree leaf node capacity = tau(in paper)
 #define LEAF_CAP 32
 #define ATTRIBUTE_DIMENSION 6
+#define SKY_PARTITION 5
+#define edDis 0.5
+
 // egtree I/O file
 #define FILE_NODE "road.node" //input nodes and edges
 #define FILE_EDGE "road.edge"
@@ -62,6 +65,55 @@ typedef struct{
 	vector<int> egtreepath; // this is used to do sub-graph locating
 }Node; //##########思考Node是否需要记录那么多数据并且思考Edge结构体
 
+typedef struct {
+	set<int> kwdCombination;
+} kwdC;
+
+struct QueryPoint
+{
+	int Ni, Nj;
+	float dist_Ni; // location
+	float distCnst; // distrance constraint	
+					//unsigned long long keywords; // ?? 和关键字有什么关系，利用二进制记录关键字信息，有的用0，没有用1
+	bitset<ATTRIBUTE_DIMENSION> subSpace; // query subspace
+	int nOfKwd;
+	set<int> kwd; // keyword information
+};
+
+QueryPoint Q;
+
+typedef struct {
+	int blockID[ATTRIBUTE_DIMENSION];
+	float skylineUpBound[ATTRIBUTE_DIMENSION];
+	float skylineBtBound[ATTRIBUTE_DIMENSION];
+
+}locSkyline;
+
+//自定义排序函数  
+bool SortBySum(const locSkyline &v1, const locSkyline &v2)//注意：本函数的参数的类型一定要与vector中元素的类型一致  
+{
+	int sum1=0, sum2=0;
+	for (int i = 0; i < Q.subSpace.size(); i++) {
+		if (Q.subSpace[i] == 1) {
+			sum1 += v1.blockID[i];
+			sum2 += v2.blockID[i];
+		}
+	}
+	if (sum1 < sum2) return true;
+	else return false;
+	//return v1.kwdCombination.size() > v2.kwdCombination.size();//降序排列  
+}
+
+//自定义排序函数  
+bool SortBySize(const kwdC &v1, const kwdC &v2)//注意：本函数的参数的类型一定要与vector中元素的类型一致  
+{
+	return v1.kwdCombination.size() > v2.kwdCombination.size();//降序排列  
+}
+
+typedef struct {
+	//int 
+} ;
+
 typedef struct{
 //--------------basic structure of gtree
 	vector<int> borders; // the borders of this node
@@ -73,7 +125,7 @@ typedef struct{
 	int father;
 // ----- min dis -----
 	vector<int> union_borders; // for non leaf node, merging borders of children
-	vector<int> mind; // min dis, row by row of union_borders #########压缩处理，下面这些可能不需要，而且需要思考添加Skyline以及关键字信息
+	vector<float> mind; // min dis, row by row of union_borders #########压缩处理，下面这些可能不需要，而且需要思考添加Skyline以及关键字信息
 // ----- for pre query init, OCCURENCE LIST in paper -----
 	//vector<int> nonleafinvlist;
 	//vector<int> leafinvlist;
@@ -85,16 +137,16 @@ typedef struct{
 	int pterToPF; //pointer to point file
 	float minDistTQ; //不保存
 // --------------extend structure of egtree for EGTD
-
-
-
+	//float skylineBound[ATTRIBUTE_DIMENSION][2]; // used to record the local skyline bound
+	set<set<int>> editKwd; //used to record the 
+	map<int, locSkyline> locSky;
 }TreeNode;
 
 int noe; // number of edges
 int nLeafNode;
 vector<Node> Nodes;
 extern vector<TreeNode> EGTree;
-
+set<int> visitedEdgeKey;
 
 // init status struct
 typedef struct{
@@ -154,5 +206,11 @@ int mainFunction(int nOfNode, EdgeMapType EdgeMap); // main function
 void makeEPtFiles(FILE *ptFile,char* treefile); // construct the extend point file
 void makeEAdjListFiles(FILE *alFile); // construct the extend adjacentList file
 void BuildEBinaryStorage(const char* fileprefix); // construct the extend binary storage
-// 
+// ---------------extend function for EGTD
+bool rdominatel(InerNode left, InerNode right); //test is be dominate
+bool sortBySize(InerNode left, InerNode right); //sort by InterNode kwd size
+bool sortByKSize(set<int> left, set<int> right); //sort by set kwd size
+int editDistanceRTL(set<int> kwd1, set<int> kwd2); //return the edit distance between two set kwd
+void handleKwdAttr(int tn, vector<InerNode> nodeInerNode); //handle local skyline and editKwd in leafnode
+void handleINKwdAddr(int tn); //handle local skyline and editKwd in internode
 #endif

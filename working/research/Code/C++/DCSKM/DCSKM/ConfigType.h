@@ -65,8 +65,6 @@ private:
 	// return the str value of key, no transform
     std::string getConfigStr(std::string& key);
 
-
-
 };
 
 #endif /* defined(__generateQueries__ConfigType__) */
