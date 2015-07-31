@@ -135,6 +135,9 @@
     <ClInclude Include="egtree.h">
       <Filter>Preprocessing\EGTree</Filter>
     </ClInclude>
+    <ClInclude Include="DCSKMQ.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

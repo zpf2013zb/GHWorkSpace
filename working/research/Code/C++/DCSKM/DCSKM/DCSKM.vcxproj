@@ -92,6 +92,7 @@
     <ClInclude Include="blk_file.h" />
     <ClInclude Include="btree.h" />
     <ClInclude Include="ConfigType.h" />
+    <ClInclude Include="DCSKMQ.h" />
     <ClInclude Include="diskbased.h" />
     <ClInclude Include="egtree.h" />
     <ClInclude Include="KeywordsGenerator.h" />
