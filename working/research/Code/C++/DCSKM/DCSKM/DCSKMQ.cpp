@@ -30,6 +30,8 @@ float queryEdgeDist;
 CandidateSet cS;
 ResultSet rS;
 
+int poicnt = 0;
+
 // for dijkstra
 //halfVQueue hvQ;
 map<edgePair, edgeState, eSComparison> visitedState ;
@@ -581,7 +583,7 @@ void EABasedAlgorithm(const QueryPoint &Q) {
 							for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
 								int temp;
 								memcpy(&temp,tempKwd+loop,sizeof(int));
-								tempKwds.push_back(temp);
+								tempKwds.insert(temp);
 							}
 
 							if(LcontianRIKwd(tempKwds,Q.kwd)){
@@ -690,7 +692,7 @@ void bottomTUpDist(QueryPoint Q, vector<TreeNode> &EGT) {
 
 }
 //计算s到cans的距离
-vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT ) {
+vector<float> dijkstra_candidate( const QueryPoint &Q, int tid, vector<TreeNode> &EGT ) {
 	
 	//找最小共同父节点,构建最短路径
 	int commonID = tid;
@@ -723,9 +725,9 @@ vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT 
 				//定位
 				vector<int>::iterator itr;
 				itr = find(EGT[commonID].union_borders.begin(),EGT[commonID].union_borders.end(),EGT[upMostID].borders[i]);
-				posutm = (*it);
+				posutm = (*itr);
 				itr = find(EGT[commonID].union_borders.begin(),EGT[commonID].union_borders.end(),EGT[pathid].borders[j]);
-				pospth = (*it);
+				pospth = (*itr);
 				float mindPos;
 				if(posutm<pospth) {
 					mindPos = (pospth*(pospth+1))/2+posutm;
@@ -758,9 +760,10 @@ vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT 
 		int sizef=EGT[fID].union_borders.size();
 		int posdc,posdf;
 		//对于该层的每个border，计算从下一层到该层的最短距离
-		for(int i=0; i<EGT[uBID].borders; i++) {
-			for(int j=0; j<EGT[fID].borders; j++) {
+		for(int i=0; i<EGT[uBID].borders.size(); i++) {
+			for(int j=0; j<EGT[fID].borders.size(); j++) {
 				//定位两个node在union_border中位置		
+				vector<int>::iterator it;
 				it = find(EGT[fID].union_borders.begin(),EGT[fID].union_borders.end(),EGT[uBID].borders[i]);
 				posdc = (*it);
 				it = find(EGT[fID].union_borders.begin(),EGT[fID].union_borders.end(),EGT[fID].borders[j]);
@@ -779,7 +782,7 @@ vector<float> dijkstra_candidate( QueryPoint &Q, int tid, vector<TreeNode> &EGT 
 		}//endfor
 
 	}//endfor
-
+	return EGT[tid].distTQ;
 	//求最短路径
 }
 
@@ -788,7 +791,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 	int Ni=Q.Ni,Nj=Q.Nj;//Ni must less than Nj
     int AdjGrpAddr,AdjListSize,NewNodeID,PtGrpKey,PtNumOnEdge;
     //unsigned long long keywords;
-	vector<int> tempKwds;
+	set<int> tempKwds;
 	set<int> visNodes;
 	int *tempKwd;
 	set<int> edgeSumKwds;
@@ -850,7 +853,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
                 //cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
                 //Notice the order POI visited on edge
                 for(int j=0; j<PtNumOnEdge; j++){
-                    poicnt++;
+                    //poicnt++;
                     getVarE(PT_DIST,Ref(PtDist),PtGrpKey,j);
                     getVarE(PT_VCT,tempKwd,PtGrpKey,j);
 					
@@ -1162,7 +1165,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 					}
 					//compute the minDistTQ,refDistTQ&minDistTQ
 					vector<float> distTQ;
-					distTQ = dijkstra_candidate( Q, EGT[cid].borders, EGT );
+					distTQ = dijkstra_candidate( Q, cid, EGT );
 					float minDist = INFINITE_MAX;
 					for(int k=0; k<distTQ.size(); k++) {
 						if(distTQ[k] < minDist) minDist = distTQ[k];
@@ -1198,7 +1201,8 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 					}
 				}
 			}
-			//构建dvq
+			//构建dvq------------xiugai----------&&&&&&&&&&&
+			dijkVisit tmpDV = dvq.top();
 			for(int k=0; k<tempDist.size(); k++) {
 				if(tempDist[k]>Q.distCnst) continue;
 				//为每个符合条件的点展开
@@ -1224,9 +1228,9 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 							visitedState[ep].vState == visited;
 							//---添加距离visitedState
 							if(tn.leafnodes[k] < NewNodeID) {
-								visitedState[ep].iDisToQuery = tempDis[k];
+								visitedState[ep].iDisToQuery = tempDist[k];
 							} else {
-								visitedState[ep].jDisToQuery = tempDis[k];
+								visitedState[ep].jDisToQuery = tempDist[k];
 							}
 							//从两端加入POIs
 							if(PtGrpKey==-1){
@@ -1271,9 +1275,9 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 						} else if(visitedState[ep].vState == visited) { //修改距离
 							//---添加距离visitedState
 							if(tmpDV.N < NewNodeID) {
-								visitedState[ep].iDisToQuery = tempDis[k];
+								visitedState[ep].iDisToQuery = tempDist[k];
 							} else {
-								visitedState[ep].jDisToQuery = tempDis[k];
+								visitedState[ep].jDisToQuery = tempDist[k];
 							}
 						} else {
 							
@@ -1285,20 +1289,20 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 							if(tn.leafnodes[k] < NewNodeID) {
 								ep.Ni = tn.leafnodes[k];
 								ep.Nj = NewNodeID;
-								es.iDisToQuery = tempDis[k];
+								es.iDisToQuery = tempDist[k];
 								es.jDisToQuery = INFINITE_MAX;
 							} else {
 								ep.Ni = NewNodeID;
 								ep.Nj = tn.leafnodes[k];
 								es.iDisToQuery = INFINITE_MAX;
-								es.jDisToQuery = tempDis[k];
+								es.jDisToQuery = tempDist[k];
 							}
 							if(distTQ.find(NewNodeID)!=distTQ.end()){
-								if(distTQ[NewNodeID]>(tempDis[k]+EdgeDist)) {
-									distTQ[NewNodeID] = tempDis[k]+EdgeDist;
+								if(distTQ[NewNodeID]>(tempDist[k]+EdgeDist)) {
+									distTQ[NewNodeID] = tempDist[k]+EdgeDist;
 								}
 							} else {
-								distTQ[NewNodeID] = tempDis[k]+EdgeDist;
+								distTQ[NewNodeID] = tempDist[k]+EdgeDist;
 							}
 							if(distTQ[NewNodeID]<=Q.distCnst) {
 								//将整条边加入
@@ -1453,7 +1457,7 @@ void EGBUAlgorithm(const QueryPoint &Q) {
 							for(int loop=0; loop<sizeof(tempKwd); loop+sizeof(int)){
 								int temp;
 								memcpy(&temp,tempKwd+loop,sizeof(int));
-								tempKwds.push_back(temp);
+								tempKwds.insert(temp);
 							}
 
 							if(LcontianRIKwd(tempKwds,Q.kwd)){
@@ -1555,7 +1559,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 	int AdjGrpAddr, AdjListSize, NewNodeID, PtGrpKey, PtNumOnEdge;
 
 
-	vector<int> tempKwds;
+	set<int> tempKwds;
 	set<int> visNodes;
 	int *tempKwd;
 	set<int> edgeSumKwds;
@@ -1936,6 +1940,8 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 					}
 				}
 				//构建dvq
+				//--------------------xiugai----------
+				dijkVisit tmpDV = dvq.top();
 				for (int k = 0; k<tempDist.size(); k++) {
 					if (tempDist[k]>Q.distCnst) continue;
 					//为每个符合条件的点展开
@@ -1961,10 +1967,10 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 								visitedState[ep].vState == visited;
 								//---添加距离visitedState
 								if (tn.leafnodes[k] < NewNodeID) {
-									visitedState[ep].iDisToQuery = tempDis[k];
+									visitedState[ep].iDisToQuery = tempDist[k];
 								}
 								else {
-									visitedState[ep].jDisToQuery = tempDis[k];
+									visitedState[ep].jDisToQuery = tempDist[k];
 								}
 								//从两端加入POIs
 								if (PtGrpKey == -1) {
@@ -2012,10 +2018,10 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							else if (visitedState[ep].vState == visited) { //修改距离
 																		   //---添加距离visitedState
 								if (tmpDV.N < NewNodeID) {
-									visitedState[ep].iDisToQuery = tempDis[k];
+									visitedState[ep].iDisToQuery = tempDist[k];
 								}
 								else {
-									visitedState[ep].jDisToQuery = tempDis[k];
+									visitedState[ep].jDisToQuery = tempDist[k];
 								}
 							}
 							else {
@@ -2029,22 +2035,22 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							if (tn.leafnodes[k] < NewNodeID) {
 								ep.Ni = tn.leafnodes[k];
 								ep.Nj = NewNodeID;
-								es.iDisToQuery = tempDis[k];
+								es.iDisToQuery = tempDist[k];
 								es.jDisToQuery = INFINITE_MAX;
 							}
 							else {
 								ep.Ni = NewNodeID;
 								ep.Nj = tn.leafnodes[k];
 								es.iDisToQuery = INFINITE_MAX;
-								es.jDisToQuery = tempDis[k];
+								es.jDisToQuery = tempDist[k];
 							}
 							if (distTQ.find(NewNodeID) != distTQ.end()) {
-								if (distTQ[NewNodeID]>(tempDis[k] + EdgeDist)) {
-									distTQ[NewNodeID] = tempDis[k] + EdgeDist;
+								if (distTQ[NewNodeID]>(tempDist[k] + EdgeDist)) {
+									distTQ[NewNodeID] = tempDist[k] + EdgeDist;
 								}
 							}
 							else {
-								distTQ[NewNodeID] = tempDis[k] + EdgeDist;
+								distTQ[NewNodeID] = tempDist[k] + EdgeDist;
 							}
 							if (distTQ[NewNodeID] <= Q.distCnst) {
 								//将整条边加入
@@ -2218,7 +2224,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
 								int temp;
 								memcpy(&temp, tempKwd + loop, sizeof(int));
-								tempKwds.push_back(temp);
+								tempKwds.insert(temp);
 							}
 
 							if (LcontianRIKwd(tempKwds, Q.kwd)) {

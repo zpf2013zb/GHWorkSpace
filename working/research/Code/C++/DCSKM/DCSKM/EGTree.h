@@ -2,7 +2,7 @@
 #define _EGTREE_H_
 
 #include<stdio.h>
-#include<metis.h>
+//#include<metis.h>
 #include<vector>
 #include<stdlib.h>
 #include<memory.h>
@@ -12,6 +12,7 @@
 #include<deque>
 #include<stack>
 #include<algorithm>
+#include "metis.h"
 //#include<netshare.h>
 
 #include "btree.h"
@@ -21,8 +22,8 @@
 #include "KeywordsGenerator.h"
 #include <random>
 #include <bitset>
-
-#include<sys/time.h>
+#include <time.h>
+//#include<sys/time>
 using namespace std;
 
 /********************************PreDefinition************************************/
@@ -184,6 +185,7 @@ idx_t* adjwgt; // array of weight of edges in adjncy
 idx_t nparts; // number of parts to partition
 idx_t objval; // edge cut for partitioning solution
 idx_t* part; // array of partition vector
+idx_t options[METIS_NOPTIONS]; // option array
 
 /********************************Function************************************/
 //-------------basic function of gtree
