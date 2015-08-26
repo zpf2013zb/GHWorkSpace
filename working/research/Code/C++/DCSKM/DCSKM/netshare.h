@@ -32,8 +32,9 @@ ostream& operator<<(ostream& os,const QueryPoint& Q)
 	os<<Q.dist_Ni<<"	"<<Q.distCnst<<"	";
 	os<<bitset<ATTRIBUTE_DIMENSION>(Q.subSpace).to_string()<<"	";
 	os<<Q.nOfKwd;
-	for(int i=0; i<Q.nOfKwd; i++) {
-		os<<"	"<<Q.kwd[i];
+	set<int>::iterator it = Q.kwd.begin();
+	for (; it != Q.kwd.end(); ) {
+		os << "	" << *it;
 	}
     return os;
     
@@ -60,6 +61,7 @@ struct POIComparison
     }
 };
 
+/*  ---------------M--not used-------------
 // output the POI to ostream
 ostream& operator<<(ostream& os, const POI& poi)
 {
@@ -74,7 +76,7 @@ ostream& operator<<(ostream& os, const POI& poi)
     
     return os;
 }
-
+*/
 struct DStepEvent
 {
     double dist;

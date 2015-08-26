@@ -329,7 +329,8 @@ void printBinary(unsigned long long n)
         cout<<((n>>i)&1);
     //cout<<endl;
 }
-
+//----------------------M--take another manner to gen data------------
+/*
 void GenOutliers(int NumPoint,int avgKeywords)
 {
     std::vector<unsigned long long> keys = KeywordsGenerator::Instance().getKeywords(NumPoint, avgKeywords);
@@ -357,7 +358,7 @@ void GenOutliers(int NumPoint,int avgKeywords)
     // work for connected graph, may not work for disconnected graphs
     // organize dist based on length and then ...
 }
-
+*/
 
 
 //For test purpose to check if Graph is connected
@@ -416,7 +417,7 @@ void ConnectedGraphCheck()
         cout<<"Road Network is not Connected."<<endl;
 }
 
-
+/*
 void getOutliersFromFile(char* prefix_name)
 {
     int Ni,Nj;
@@ -452,7 +453,7 @@ void getOutliersFromFile(char* prefix_name)
     // work for connected graph, may not work for disconnected graphs
     // organize dist based on length and then ...
 }
-
+*/
 //void reAssignKeywords(int avg)
 //{
 //    num_K=0;
@@ -490,7 +491,7 @@ int main(int argc, char *argv[])
 
     ConnectedGraphCheck();
 	
-    GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
+    //GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
 
     printf("Avg keyword # per object:%f\n",float(num_K)/num_D);
     

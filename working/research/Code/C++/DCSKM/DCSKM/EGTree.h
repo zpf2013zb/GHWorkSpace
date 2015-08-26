@@ -23,16 +23,25 @@
 #include <random>
 #include <bitset>
 #include <time.h>
-//#include<sys/time>
+//#include<sys/time.h>
 using namespace std;
 
 /********************************PreDefinition************************************/
-// MACRO for timing
+// MACRO for timing----Linux
+/*
 struct timeval tv;
 long long ts, te;
 #define TIME_TICK_START gettimeofday( &tv, NULL ); ts = tv.tv_sec * 100000 + tv.tv_usec / 10;
 #define TIME_TICK_END gettimeofday( &tv, NULL ); te = tv.tv_sec * 100000 + tv.tv_usec / 10;
 #define TIME_TICK_PRINT(T) printf("%s RESULT: %lld (0.01MS)\r\n", (#T), te - ts );
+*/
+// test in windows
+
+long long ts, te;
+#define TIME_TICK_START clock_t ts=clock();
+#define TIME_TICK_END clock_t te=clock();
+#define TIME_TICK_PRINT(T) printf("%s RESULT: %lld (0.01MS)\r\n", (#T), te - ts );
+
 // offset 
 #define _FILE_OFFSET_BITS 64
 // set all edge weight to 1(unweighted graph)

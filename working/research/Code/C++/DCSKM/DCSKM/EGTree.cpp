@@ -195,13 +195,13 @@ unordered_map<int,int> graph_partition( set<int> &nset ){
         part
     );	
 	// return result state
-	if ( METISERRORINPUT == returnstate  ) {
+	if ( METIS_ERROR_INPUT == returnstate  ) {
 		printf("Input Error!");
 		return result;
-	} else if(METISERRORMEMORY == returnstate) {
+	} else if(METIS_ERROR_MEMORY == returnstate) {
 		printf("Memory Error!");
 		return result;
-	} else if(METISERROR == returnstate) {
+	} else if(METIS_ERROR == returnstate) {
 		printf("Other Type Error!");
 		return result;
 	} else {
@@ -923,8 +923,8 @@ void hierarchy_shortest_path_calculation(){
 			cands.clear();
 			if ( EGTree[tn].isleaf ){
 				//sort lefenodes and union_borders
-				sort(EGTree[tn].leafnodes.begin(),EGTree[tn].leafnodes.end(),less());
-				sort(EGTree[tn].borders.begin(),EGTree[tn].borders.end(),less());
+				sort(EGTree[tn].leafnodes.begin(),EGTree[tn].leafnodes.end());
+				sort(EGTree[tn].borders.begin(),EGTree[tn].borders.end());
 				// cands = leafnodes
 				cands = EGTree[tn].leafnodes;
 				// union borders = borders;
@@ -1025,8 +1025,8 @@ void hierarchy_shortest_path_calculation(){
 				}
 				EGTree[tn].union_borders = cands;
 				//sort lefenodes and union_borders
-				sort(EGTree[tn].union_borders.begin(),EGTree[tn].union_borders.end(),less());
-				sort(cands.begin(),cands.end(),less());
+				sort(EGTree[tn].union_borders.begin(),EGTree[tn].union_borders.end());
+				sort(cands.begin(),cands.end());
 
 				//------------------------record the mind information
 				vertex_pairs.clear();
@@ -1159,21 +1159,21 @@ void hierarchy_shortest_path_load(){
 	fclose(fin);
 }
 
-int mainFunction(int nOfNode, const EdgeMapType EdgeMap){ // main function{
+int mainFunction(int nOfNode, EdgeMapType EdgeMap){ // main function{
 	// init
 	TIME_TICK_START
-	init(int nOfNode, const EdgeMapType EdgeMap);
+	init(nOfNode, EdgeMap);
 	TIME_TICK_END
 	TIME_TICK_PRINT("INIT")
 
 	// gtree_build
 	TIME_TICK_START
-	build();
+	build(EdgeMap);
 	TIME_TICK_END
 	TIME_TICK_PRINT("BUILD")
 
 	// dump EGTree
-	gtree_save();
+	egtree_save();
 	
 	// calculate distance matrix
 	TIME_TICK_START

@@ -7,7 +7,7 @@ void InitClock()
 {
     START_TIME=clock();
     srand(time(NULL));
-    srand48(time(NULL));
+    //srand48(time(NULL));
 }
 void PrintElapsed()
 {
@@ -239,9 +239,11 @@ double gaussian(double mean, double sigma)
     double v1,v2,s,x;
     do
     {
-        v1 = drand48();
+        //v1 = drand48();
+		v1 = (float)rand() / RAND_MAX;
         if (rand()%2) v1 = -v1;
-        v2 = drand48();
+        //v2 = drand48();
+		v2 = (float)rand() / RAND_MAX;
         if (rand()%2) v2 = -v2;
         s = v1*v1 + v2*v2;
     }
@@ -261,7 +263,8 @@ void InitZipfMaxVal(int maxnum,double theta)
 
 int zipf(double theta)
 {
-    double r= drand48()*ZipfMaxVal, sum= 1.0;
+    //double r= drand48()*ZipfMaxVal, sum= 1.0;
+	double r = ((float)rand() / RAND_MAX) *ZipfMaxVal, sum = 1.0;
     int i=1;
     while( sum<r)
     {
@@ -278,7 +281,7 @@ long poisson(long lambda)
     double p = 1.0;
     while (p>=c)
     {
-        p = p * drand48();
+        p = p * ((float)rand() / RAND_MAX);
         n++;
     }
     //return (n-1); //this is in original code

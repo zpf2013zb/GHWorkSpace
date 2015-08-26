@@ -8,13 +8,16 @@
 #include <math.h>
 #include <assert.h>
 
-using namespace std;
 #include <vector>
 #include <deque>
 #include <map>
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <time.h>
+
+using namespace std;
+
 
 //typedef map<string,string> ConfigType;
 #define FastArray	vector

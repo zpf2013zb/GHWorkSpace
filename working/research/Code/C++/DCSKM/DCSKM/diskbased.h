@@ -290,6 +290,8 @@ void CloseDiskComm()
     DestroyFreqCache(FC_A);
     DestroyFreqCache(FC_P);
 }
+//-----------------------M--no use--------------
+/*
 // no use
 void printSubTree(BTree* bt,NodeStruct* node,int indent)
 {
@@ -323,7 +325,7 @@ void printTree(BTree* bt)
     ReadIndexBlock(bt,bt->root,root_node);
     printSubTree(bt,root_node,0);
 }
-
+*/
 // functions for visualizing clusters
 
 FastArray<float> xcrd,ycrd;

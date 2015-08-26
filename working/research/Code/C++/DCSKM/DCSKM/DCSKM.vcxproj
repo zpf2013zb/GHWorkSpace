@@ -78,16 +78,6 @@
   <ItemGroup>
     <None Include=".DS_Store" />
     <None Include="._.DS_Store" />
-    <None Include="cal.cedge" />
-    <None Include="cal.cnode" />
-    <None Include="cal.gtree" />
-    <None Include="cal.minds" />
-    <None Include="cal.object" />
-    <None Include="cal.paths" />
-    <None Include="gtree_build" />
-    <None Include="gtree_query" />
-    <None Include="Makefile" />
-    <None Include="README (2).txt" />
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -97,7 +87,6 @@
     <ClInclude Include="DCSKMQ.h" />
     <ClInclude Include="diskbased.h" />
     <ClInclude Include="egtree.h" />
-    <ClInclude Include="KeywordsGenerator.h" />
     <ClInclude Include="netshare.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -108,21 +97,14 @@
     <ClCompile Include="blk_file.cc" />
     <ClCompile Include="btree.cc" />
     <ClCompile Include="ConfigType.cc" />
-    <ClCompile Include="DCSKM.cpp" />
     <ClCompile Include="DCSKMQ.cpp" />
     <ClCompile Include="egtree.cpp" />
-    <ClCompile Include="gendata.cc" />
     <ClCompile Include="genQueryPoint2File.cc" />
-    <ClCompile Include="egtree_build.cpp" />
-    <ClCompile Include="gtree_query.cpp" />
-    <ClCompile Include="KeywordsGenerator.cc" />
-    <ClCompile Include="RkBSK-query.cc" />
-    <ClCompile Include="selectQueryPoints.cc" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="testGenData.cpp" />
+    <ClCompile Include="genData.cpp" />
     <ClCompile Include="utility.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

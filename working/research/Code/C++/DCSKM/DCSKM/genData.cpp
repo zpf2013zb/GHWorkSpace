@@ -14,6 +14,7 @@ int num_K;
 
 int PoiNum;
 int KwdNum;
+int distsum;
 float STEP_SIZE;
 float MAX_SEG_DIST;
 float AVG_DEG;
@@ -271,7 +272,7 @@ void makeEPtFiles(FILE *ptFile) {// construct the extend point file
 	for(; treeNodeID < EGTree.size(); treeNodeID++) {
 		if(!EGTree[treeNodeID].isleaf) continue;
 		// is leaf node ,sort it in ascend order
-		sort(EGTree[treeNodeID].leafnodes.begin(),EGTree[treeNodeID].leafnodes.end(),less());
+		sort(EGTree[treeNodeID].leafnodes.begin(),EGTree[treeNodeID].leafnodes.end());
 		for(int i=0; i<EGTree[treeNodeID].leafnodes.size(); i++) {
 			nodeID = EGTree[treeNodeID].leafnodes[i];
 			partID[nodeID].part = treeNodeID;
@@ -317,7 +318,7 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 	for(; treeNodeID < EGTree.size(); treeNodeID++) {
 		if(!EGTree[treeNodeID].isleaf) continue;
 		// is leaf node ,may be no use
-		sort(EGTree[treeNodeID].leafnodes.begin(),EGTree[treeNodeID].leafnodes.end(),less());
+		sort(EGTree[treeNodeID].leafnodes.begin(),EGTree[treeNodeID].leafnodes.end());
 		for(int i=0; i<EGTree[treeNodeID].leafnodes.size(); i++) {
 			nodeID = EGTree[treeNodeID].leafnodes[i];
 			partID[nodeID].addr = addr;
@@ -459,14 +460,16 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
         tempNode.dis = distMinV;
 		memcpy(tempNode.attr, attribute, sizeof(float)*ATTRIBUTE_DIMENSION);
 		tempNode.nOfK = nOfKwd;
-		tempNode.kwd = new int[nOfKwd];
+		int keywd;
 		int loop = 1;
 		KwdNum += nOfKwd;
 		while(loop<nOfKwd) {
-           fscanf(cpoi," %d",&tempNode.kwd[loop-1]);
+           fscanf(cpoi," %d",&keywd);
+		   tempNode.kwd.insert(keywd);
 		   loop ++;
 		}
-		fscanf(cpoi," %d\n",&tempNode.kwd[loop-1]);
+		fscanf(cpoi," %d\n",&keywd);
+		tempNode.kwd.insert(keywd);
 		// push poi to edge
 		edge* e = EdgeMap[getKey(nid,njd)];
         e->pts.push_back(tempNode);	
@@ -532,6 +535,8 @@ void printBinary(unsigned long long n)
     //cout<<endl;
 }
 
+//--------------------------M--no used-----------------
+/*
 void GenOutliers(int NumPoint,int avgKeywords)
 {
     std::vector<unsigned long long> keys = KeywordsGenerator::Instance().getKeywords(NumPoint, avgKeywords);
@@ -559,8 +564,7 @@ void GenOutliers(int NumPoint,int avgKeywords)
     // work for connected graph, may not work for disconnected graphs
     // organize dist based on length and then ...
 }
-
-
+*/
 
 //For test purpose to check if Graph is connected
 struct StepEvent
@@ -616,7 +620,8 @@ void ConnectedGraphCheck()
         cout<<"Road Network is not Connected."<<endl;
 }
 
-
+//-----------------------------M--no used--------------
+/*
 void getOutliersFromFile(char* prefix_name)
 {
     int Ni,Nj;
@@ -653,6 +658,7 @@ void getOutliersFromFile(char* prefix_name)
     // organize dist based on length and then ...
 }
 
+
 //void reAssignKeywords(int avg)
 //{
 //    num_K=0;
@@ -673,7 +679,7 @@ void getOutliersFromFile(char* prefix_name)
 //        iterEdge++;
 //    }
 //}
-
+*/
 
 
 int main(int argc, char *argv[])
@@ -689,8 +695,10 @@ int main(int argc, char *argv[])
     ReadRealNetwork(cr.getMapFileName().c_str(),0);
 
     ConnectedGraphCheck();
+
 	// *******no use**********
-    GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
+	//--------------------------M--no used----------
+    //GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
 
     printf("Avg keyword # per object:%f\n",float(num_K)/num_D);
     
