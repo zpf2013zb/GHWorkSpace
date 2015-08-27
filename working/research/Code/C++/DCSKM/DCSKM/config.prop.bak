@@ -1,0 +1,55 @@
+/***********************************************************
+ *   Author              : Pengfei Zhang
+ *   Email               : zpf_2013zb@zju.edu.cn
+ *   Last modified       : 2015-08-28 11:34
+ *   Filename            : config.prop
+ *   Description         : 
+ **********************************************************/
+/*
+ *  Default Settings 
+ */
+
+cachepages = 200
+
+/*
+ *  Data settings
+ *  Query File default to map_querydistcst_querykeywordsnumber_querysubspacedimensions_cachepages
+ *  Data File default to map_datatype
+ */
+
+map = as
+
+/*
+ *  Query File settings
+ *  Used for query point generation
+ *  Query File default to map_querydistcst_querykeywordsnumber_querysubspacedimensions_cachepages
+ *  queryfile default write to query/
+ *  queryresult default write to result/
+ *  numberOfQueryPoints : How much queries do we select in experiments
+ *  querykeywordsnumber : The number of query keywords we need
+ */
+
+querypath = experiment\query
+querydistanceconstraint = 1000
+querykeywordsnumber = 5
+numberOfQueryPoints = 20 
+querysubspacedimensions = 3
+
+/*
+ *  Experiment Data generation settings
+ *  These parameters should used as arguments to execute file
+ */
+datapath = experiment\data
+
+
+
+/*
+ *  Experiment Index generation settings
+ *  These parameters should used as arguments to execute file
+ *  indexpath
+ */
+indexpath = experiment\index
+
+/*
+ *  Config file end
+ */

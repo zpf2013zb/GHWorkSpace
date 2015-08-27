@@ -78,6 +78,7 @@
   <ItemGroup>
     <None Include=".DS_Store" />
     <None Include="._.DS_Store" />
+    <None Include="ClassDiagram.cd" />
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>

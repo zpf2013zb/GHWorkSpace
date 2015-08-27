@@ -13,11 +13,24 @@
 #include <map>
 #include <string>
 
-#define PRO_HOME_DIR std::string("/Users/qinxu/Desktop/rksk_mac/")
+//-------------------------M--test for different platform--------------
+// for linux
+/*
+#define PRO_HOME_DIR std::string("/Users/pengfei/Desktop/rksk_mac/")
 #define CONFIG_PATH  PRO_HOME_DIR
 #define DATA_PATH PRO_HOME_DIR+std::string("data/")
 #define QUERY_FILE_PATH PRO_HOME_DIR+std::string("queryfiles/")
 #define QUERY_RESULT_FILE_PATH PRO_HOME_DIR+std::string("queryresults/")
+*/
+std::string seperator = "\\";
+// for windows
+#define PRO_HOME_DIR std::string("\\Users\\pengfei\\Desktop\\DCSKM\\")
+#define CONFIG_PATH  PRO_HOME_DIR
+#define DATA_PATH PRO_HOME_DIR+std::string("data\\")
+#define INDEX_PATH PRO_HOME_DIR+std::string("index\\")
+#define QUERY_PATH PRO_HOME_DIR+std::string("query\\")
+//#define QUERY_FILE_PATH PRO_HOME_DIR+std::string("queryfiles/")
+//#define QUERY_RESULT_FILE_PATH PRO_HOME_DIR+std::string("queryresults/")
 
 
 class ConfigType
@@ -51,6 +64,18 @@ public:
     std::string getQueryFileName();
 	// return the queryresult file correspoding to query filename
     std::string getQueryResultFileName();
+	//---------------------M--add the new function-------------
+	// data relevant 
+	// index relevant
+
+	// query relevant
+	// return the query distance constraint
+	float getParameterDistanceConstraint();
+	// return the query subspace dimension
+	float getParameterSubspaceDimensions();
+
+
+
 private:
 	// read the config information from "config.prop"
     void AddConfigFromFile(std::string& configFileName);

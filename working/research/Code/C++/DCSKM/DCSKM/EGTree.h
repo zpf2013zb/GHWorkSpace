@@ -55,7 +55,7 @@ long long ts, te;
 #define ATTRIBUTE_DIMENSION 6
 #define SKY_PARTITION 5
 #define edDis 0.5
-
+#define splitBlock 5
 // egtree I/O file
 #define FILE_NODE "road.node" //input nodes and edges
 #define FILE_EDGE "road.edge"
@@ -209,8 +209,8 @@ void egtree_save(); // dump gtree index to file
 void egtree_load(vector<TreeNode> EGTree);// load gtree index from file
 vector<int> dijkstra_candidate( int s, vector<int> &cands, vector<Node> &graph ); // dijkstra search, used for single-source shortest path search WITHIN one gtree leaf node!
 void hierarchy_shortest_path_calculation(); // calculate the distance matrix
-void hierarchy_shortest_path_save(); // dump distance matrix into file
-void hierarchy_shortest_path_load(); // load distance matrix from file
+//void hierarchy_shortest_path_save(); // dump distance matrix into file
+//void hierarchy_shortest_path_load(); // load distance matrix from file
 int mainFunction(int nOfNode, EdgeMapType EdgeMap); // main function
 
 //---------------extend function of egtree
@@ -218,7 +218,7 @@ void makeEPtFiles(FILE *ptFile,char* treefile); // construct the extend point fi
 void makeEAdjListFiles(FILE *alFile); // construct the extend adjacentList file
 void BuildEBinaryStorage(const char* fileprefix); // construct the extend binary storage
 // ---------------extend function for EGTD
-bool rdominatel(InerNode left, InerNode right); //test is be dominate
+int rdominatel(InerNode left, InerNode right)); //test is be dominate
 bool sortBySize(InerNode left, InerNode right); //sort by InterNode kwd size
 bool sortByKSize(set<int> left, set<int> right); //sort by set kwd size
 int editDistanceRTL(set<int> kwd1, set<int> kwd2); //return the edit distance between two set kwd

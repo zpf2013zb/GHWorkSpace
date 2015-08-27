@@ -2,12 +2,13 @@
 #include "utility.h"
 #include "netshare.h"
 #include "ConfigType.h"
+#include "egtree.h"
 #include "KeywordsGenerator.h"
 #include <random>
 #include<algorithm>
 #include <bitset>
-#include "egtree.h"
 #include <vector>
+#include<stdio.h>
 
 int num_D;
 int num_K;
@@ -401,19 +402,18 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
 
     // side effect: change nodes
     char edgef[255],nodef[255],poif[255];
-    sprintf(edgef,"%s.cedge",prefix_name.c_str());
-	sprintf(poif,"%s.cpoi",prefix_name.c_str());
+    sprintf(edgef,"%s\\road.txt",prefix_name.c_str());
+	sprintf(poif,"%s\\poi.txt",prefix_name.c_str());
 
     FILE* cedge=fopen(edgef,"r");
     CheckFile(cedge,edgef);
     NodeNum=0;	// getKey depends on NodeNum so we have to init. it first
-
+	                                                                                   
     while (!feof(cedge)) {
-        
         fscanf(cedge, "%d %d %d %f\n", &id, &Ni, &Nj, &dist);
         NodeNum = std::max(std::max(Ni, Nj),NodeNum);     
     }
-    //NodeNum++;
+    
     printf("%d nodes read, ",NodeNum);
     PrintElapsed();
     
@@ -423,7 +423,7 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
     while (!feof(cedge))
     {
         fscanf(cedge, "%d %d %d %f\n", &id, &Ni, &Nj, &dist);
-        if (Ni<NodeNum&&Nj<NodeNum)  	// ignore edges outside the range
+        if (Ni<=NodeNum&&Nj<=NodeNum)  	// ignore edges outside the range
         {
             //printf( "%d %d %d %f\n", id, Ni, Nj, dist);
             edge* e=new edge;
@@ -439,21 +439,34 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
         }
     }
     printf("%d edges read, ",EdgeNum);
-    //PrintElapsed();
+    PrintElapsed();
     fclose(cedge);
 
 	//-------------read poi--------------
 	FILE* cpoi=fopen(poif,"r");
     CheckFile(cpoi,poif);
-    PoiNum=0;	// to record the Poi num
+    PoiNum=0;	// to record the poi num
 	KwdNum=0;   // to record the kwd num
-	int pid, nid, njd, distMinV, nOfKwd;
+	int pid, nid, njd, nOfKwd; 
+	float distMinV;
 	float attribute[ATTRIBUTE_DIMENSION];
 	memset(attribute, 0.0, sizeof(float)*ATTRIBUTE_DIMENSION);
+	int tempMaxNodeNum = 0; // used to verify whether vertex id of poi larger than road
+    while (!feof(cpoi)) {   
+		// read <object id> <vertex id> <vertex id> <distance to edge vertex,little>
+        fscanf(cpoi, "%d %d %d %f", &pid, &nid, &njd, &distMinV);
+		// read <attributes information,randomly>
+		for (int i = 0; i < ATTRIBUTE_DIMENSION; i++) {
+			fscanf(cpoi, " %f", &attribute[i]);
+		}
+		// read <NofKwd>  <textual description/kwd>
+		fscanf(cpoi, " %d", &nOfKwd);
 
-    while (!feof(cpoi)) {       
-        fscanf(cpoi, "%d %d %d %d %f %f %f %f %f %f %d", &pid, &nid, &njd, &distMinV, &attribute[0],&attribute[1],&attribute[2],&attribute[3],&attribute[4],&attribute[5],&nOfKwd);
-        PoiNum = std::max(PoiNum,pid);
+		PoiNum = std::max(PoiNum,pid);
+		tempMaxNodeNum = std::max(std::max(nid, njd), tempMaxNodeNum);
+		if (tempMaxNodeNum > NodeNum) {
+			printf("The vertex of poi out of the scope of road!");
+		}
 
 		InerNode tempNode;
 		tempNode.poid = pid;
@@ -478,7 +491,7 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
 
 	//--------------------compute the lower&upper bound and kwds
 	EdgeMapType::iterator iter=EdgeMap.begin();
-	while(iter != EdgeMap.end()) {
+	for (; iter != EdgeMap.end(); iter++) {
 		edge *e = iter->second;
 		for(int i=0; i<e->pts.size(); i++) {
 			InerNode temp = e->pts[i];
@@ -499,10 +512,8 @@ void ReadRealNetwork(std::string prefix_name,int _NodeNum = 0)
 				}
 				set_union(temp.kwd.begin(), temp.kwd.end(), e->kwds.begin(), e->kwds.end(), e->kwds.begin());
 			}
-
 		}
-		iter ++;
-	}
+	} // end for iter
 }
 
 
@@ -510,7 +521,8 @@ int GEN_PAIR_CNT=0;
 
 //Modified by Qin Xu
 //for simplicy purpose
-
+//--------------------------------M--no use-----------------
+/*
 void genPairByAd(int& Ni,int& Nj)
 {
     int Ri,Rj;
@@ -519,21 +531,24 @@ void genPairByAd(int& Ni,int& Nj)
     {
         do
         {
-            Ri=rand()%NodeNum;
-        }
-        while (AdjList[Ri].size()==0);
+			//---------------M--add 1---------------
+            Ri=rand()%NodeNum + 1;
+        } while (AdjList[Ri].size()==0);
         Rj=AdjList[Ri][rand()%AdjList[Ri].size()];
     }
     Ni=Ri<Rj?Ri:Rj;
     Nj=Ri<Rj?Rj:Ri;
 }
-
+*/
+//---------------------------M--no use---------------
+/*
 void printBinary(unsigned long long n)
 {
     for(int i = MAX_KEYWORDS-1; i>=0; i--)
         cout<<((n>>i)&1);
-    //cout<<endl;
+    cout<<endl;
 }
+*/
 
 //--------------------------M--no used-----------------
 /*
@@ -566,14 +581,15 @@ void GenOutliers(int NumPoint,int avgKeywords)
 }
 */
 
-//For test purpose to check if Graph is connected
+// For test purpose to check if graph is connected
 struct StepEvent
 {
-    //float dist;
-    double dist;
+    float dist;
+    //double dist;
     int node;	// posDist for gendata.cc only
 };
 
+// ">" means the acsending order
 struct StepComparison
 {
     bool operator () (const StepEvent& left, const StepEvent& right) const
@@ -602,7 +618,7 @@ void ConnectedGraphCheck()
         if (isVisited[event.node]) continue;
         isVisited[event.node]=true;
         cnt++;
-        int Ni=event.node;
+        int Ni=event.node; 
         for (int k=0; k<AdjList[Ni].size(); k++)
         {
             int Nk=AdjList[Ni][k];	// Nk can be smaller or greater than Ni !!!
@@ -614,6 +630,7 @@ void ConnectedGraphCheck()
             }
         }
     }
+
     if (cnt==NodeNum)
         cout<<"Road Network is Connected."<<endl;
     else
@@ -699,16 +716,16 @@ int main(int argc, char *argv[])
 	// *******no use**********
 	//--------------------------M--no used----------
     //GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
-
-    printf("Avg keyword # per object:%f\n",float(num_K)/num_D);
+    //printf("Avg keyword # per object:%f\n",float(num_K)/num_D);
     
     BuildBinaryStorage(cr.getDataFileName().c_str());
     
 
-	//--------------------extend for egtree
+	//--------------------extend for egtree-------------------
 	mainFunction(NodeNum, EdgeMap);
 	BuildEBinaryStorage(cr.getDataFileName().c_str());
-
+//-------------M-- save in this part---------
+	egtree_save();
     ofstream fout(cr.getDataFileName()+"_Information");    
     fout<<"Number of Vertexes:"<<NodeNum<<endl;
     fout<<"Number of Edges:"<<EdgeNum<<endl;

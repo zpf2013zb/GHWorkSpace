@@ -176,7 +176,7 @@ EdgeMapType EdgeMap;	// key: i0*NodeNum+j0
 inline int getKey(int i,int j)
 {
     int i0=i<j?i:j,j0=j<i?i:j;	// be careful of the order in other places
-    return (i0*NodeNum+j0); // uniform for each node ???
+    return (i0*NodeNum+j0); // map this edge to unique key
 }
 // break the index of key of edge
 inline void breakKey(int key,int& Ni,int& Nj)

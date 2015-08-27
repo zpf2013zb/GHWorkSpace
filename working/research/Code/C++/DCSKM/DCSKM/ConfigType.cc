@@ -179,9 +179,9 @@ int ConfigType::getParameterQueryKeywordNumbers()
 }
 std::string ConfigType::getQueryFileName()
 {
-    auto pos = getDataFileName().rfind("/");
+    auto pos = getDataFileName().rfind(seperator);
     std::string dataName = getDataFileName().substr(pos+1);
-    std::string queryFileName = QUERY_FILE_PATH +dataName+"_queryPoints_"+ std::to_string(getParameterQueryKeywordNumbers())+"_"+std::to_string(getParameterK())+"_"+std::to_string(getParameterCachePages());
+    std::string queryFileName = QUERY_PATH + seperator + "query"+dataName+"_queryPoints_"+ std::to_string(getParameterQueryKeywordNumbers())+"_"+std::to_string(getParameterK())+"_"+std::to_string(getParameterCachePages());
     return queryFileName;
 }
 
@@ -193,9 +193,21 @@ int ConfigType::getParameterNumberOfQueryPoints()
 
 std::string ConfigType::getQueryResultFileName()
 {
-    auto pos = getQueryFileName().rfind("/");
+    auto pos = getQueryFileName().rfind(seperator);
     
-    return QUERY_RESULT_FILE_PATH + getQueryFileName().substr(pos+1)+std::string("_ResultFile");
+    return QUERY_PATH + seperator + "result" + getQueryFileName().substr(pos+1)+std::string("_ResultFile");
+}
+
+float ConfigType::getParameterDistanceConstraint()
+{
+	std::string key = "querydistanceconstraint";
+	return getConfigInt(key);
+}
+
+float ConfigType::getParameterSubspaceDimensions()
+{
+	std::string key = "querysubspacedimensions";
+	return getConfigInt(key);
 }
 
 int ConfigType::getParameterOutlierDensity()

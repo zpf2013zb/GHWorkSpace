@@ -1,12 +1,10 @@
-﻿Build started 2015/7/26 20:25:15.
-     1>Project "G:\software\LearnSoftware\gitHub\GHWorkSpace\working\research\Code\C++\DCSKM\DCSKM\DCSKM.vcxproj" on node 2 (Rebuild target(s)).
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(366,5): warning MSB8003: Could not find WindowsSDKDir variable from the registry.  TargetFrameworkVersion or PlatformToolset may be set to an invalid version number.
+﻿生成启动时间为 2015/8/26 15:24:31。
+     1>项目“G:\software\LearnSoftware\gitHub\GHWorkSpace\working\research\Code\C++\DCSKM\DCSKM\DCSKM.vcxproj”在节点 2 上(Rebuild 个目标)。
      1>ClCompile:
-         G:\software\LearnSoftware\vs2015\installFile\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D CODE_ANALYSIS /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Yc"stdafx.h" /Fp"Debug\DCSKM.pch.codeanalysis" /Fo"Debug\\" /Fd"Debug\vc140.pdb" /Gd /TP /analyze /analyze:pluginG:\software\LearnSoftware\vs2015\installFile\VC\\bin\localespc.dll /errorReport:prompt   /analyze:quiet stdafx.cpp
-         stdafx.cpp
-     1>g:\software\learnsoftware\github\ghworkspace\working\research\code\c++\dcskm\dcskm\targetver.h(8): fatal error C1083: Cannot open include file: 'SDKDDKVer.h': No such file or directory
-     1>Done Building Project "G:\software\LearnSoftware\gitHub\GHWorkSpace\working\research\Code\C++\DCSKM\DCSKM\DCSKM.vcxproj" (Rebuild target(s)) -- FAILED.
+         G:\software\LearnSoftware\VS_2015\installFile\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /GL /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Yc"stdafx.h" /Fp"Debug\DCSKM.pch" /Fo"Debug\\" /Fd"Debug\vc140.pdb" /Gd /TP /analyze- /errorReport:prompt stdafx.cpp
+     1>cl : 命令行 error D8016: “/ZI”和“/GL”命令行选项不兼容
+     1>已完成生成项目“G:\software\LearnSoftware\gitHub\GHWorkSpace\working\research\Code\C++\DCSKM\DCSKM\DCSKM.vcxproj”(Rebuild 个目标)的操作 - 失败。
 
-Build FAILED.
+生成失败。
 
-Time Elapsed 00:00:01.75
+已用时间 00:00:01.04

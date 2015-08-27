@@ -19,11 +19,12 @@ void options_setting(){
 	options[METIS_OPTION_NUMBERING] = 0;
 	// options[METIS_OPTION_DBGLVL] = 0;
 }
+// read the data from EdgeMap instead of file
 void init_input(int nOfNode, EdgeMapType EdgeMap) {
 	nLeafNode = 0;
 	// process node information
 	printf("PROCESSING NODE...");
-	//fin = fopen(FILE_NODE,"r");
+	// notable that vertex id in node is from 0
 	for(int i=0; i<nOfNode; i++) {
 		Node node;
 		node.isborder = false;
@@ -40,7 +41,7 @@ void init_input(int nOfNode, EdgeMapType EdgeMap) {
 	int iweight;
 	noe = 0;
 	EdgeMapType::iterator iter=EdgeMap.begin();
-	while (iter!=EdgeMap.end()) {
+	for (; iter != EdgeMap.end(); iter++) {
 		edge* e=iter->second;
 		noe ++;
 		snid = e->Ni;
@@ -52,11 +53,11 @@ void init_input(int nOfNode, EdgeMapType EdgeMap) {
 		Nodes[snid].adjweight.push_back( iweight );
 		Nodes[enid].adjnodes.push_back( snid );
 		Nodes[enid].adjweight.push_back( iweight );		
-		iter++;
 	}
 	//fclose(fin);
 	printf("COMPLETE.\n");
 }
+
 /*
 void init_input(int nOfNode, const EdgeMapType EdgeMap){
 	FILE *fin;
@@ -235,7 +236,8 @@ void build(EdgeMapType EdgeMap){
 	Status rootstatus;
 	rootstatus.tnid = 0;
 	rootstatus.nset.clear();
-	for ( int i = 0; i < Nodes.size(); i++ ){
+	// careful the index of node start from 1
+	for ( int i = 1; i <= Nodes.size(); i++ ){
 		rootstatus.nset.insert(i);
 	}
 	buildstack.push( rootstatus );  
@@ -267,14 +269,15 @@ void build(EdgeMapType EdgeMap){
 				//partID[*it] = current.tnid;
 
 				//------------------------------计算整个区域的上下界和关键字
-				for(int i=0; i<AdjList[*it].size(); i++) {
-					int Ni=AdjList[*it][i];	// Nk can be smaller or greater than Ni !!!
-					edge* e=EdgeMap[getKey(*it,Ni)];
+				//---------------------M--replace the adjList with Nodes--------
+				for(int i=0; i<Nodes[*it].adjnodes.size(); i++) {
+					int Nj=Nodes[*it].adjnodes[i];	// Nk can be smaller or greater than Ni !!!
+					edge* e=EdgeMap[getKey(*it,Nj)];
 
 					if(it == current.nset.begin()) { //直接初始化
 						for(int j=0; j<ATTRIBUTE_DIMENSION; j++) {
 							EGTree[current.tnid].attrBound[j][0] = e->attrBound[j][0];
-							EGTree[current.tnid].attrBound[j][0] = e->attrBound[j][1];
+							EGTree[current.tnid].attrBound[j][1] = e->attrBound[j][1];
 						}
 						copy(e->kwds.begin(),e->kwds.end(),EGTree[current.tnid].union_kwd.begin());
 					} else {
@@ -291,7 +294,7 @@ void build(EdgeMapType EdgeMap){
 
 				}//endfor i
 				
-			}//endfor it
+			}//endfor iteration
 			continue;
 		}
 
@@ -667,7 +670,7 @@ vector<int> dijkstra_candidate( int s, vector<int> &cands, vector<Node> &graph )
 
 //test is be dominate
 // smaller is better
-bool rdominatel(InerNode left, InerNode right) {
+int rdominatel(InerNode left, InerNode right) {
 	int size = ATTRIBUTE_DIMENSION;
 	bool lDr = true;
 	bool rDl = true;
@@ -678,15 +681,19 @@ bool rdominatel(InerNode left, InerNode right) {
 		if (left.attr[i] == right.attr[i]) equal++;
 	}
 	if (lDr && (equal != size)) { //dominate local
-		return false;
+		return -1;
 	}
 		
 	if (rDl) { //
-		return true;
+		return 1;
+	}
+
+	if (!rDl && !lDr) {
+		return 0;
 	}
 	
 }
-
+// must in descending order of size
 bool sortBySize(InerNode left, InerNode right) {
 	if (left.kwd.size()>right.kwd.size()) return true;
 	else return false;
@@ -752,14 +759,16 @@ void handleKwdAttr(int tn, vector<InerNode> nodeInerNode) {
 		InerNode iNi = *iti;
 		for (itj=iti+1; itj != nodeInerNode.end(); ) {
 			InerNode iNj = *itj;
-			if (rdominatel(iNi, iNj)) {
-				iti++;
-			}
-			else { // l dominate r
-				// remove r 
+			if (rdominatel(iNi, iNj) == -1) {
 				itj = nodeInerNode.erase(itj);
 			}
-			
+			else if(rdominatel(iNi, iNj) == 0) { // not dominate each other
+				// remove r 
+				itj ++;
+			}
+			else {
+				iti = nodeInerNode.erase(iti);
+			}		
 		}
 	}
 
@@ -768,22 +777,13 @@ void handleKwdAttr(int tn, vector<InerNode> nodeInerNode) {
 		InerNode inode = nodeInerNode[i];
 		int num[ATTRIBUTE_DIMENSION];
 		int mapKey = 0;
-		for (int j = 0; j < ATTRIBUTE_DIMENSION; j++) {
-			
-			if (inode.attr[j] > 0.0 && inode.attr[j] <= 0.2) {
-				num[j] = 1;
-			}
-			else if (inode.attr[j] <= 0.4) {
-				num[j] = 2;
-			}
-			else if (inode.attr[j] <= 0.6) {
-				num[j] = 3;
-			}
-			else if (inode.attr[j] <= 0.8) {
-				num[j] = 4;
-			}
-			else {
-				num[j] = 5;
+		for (int j = 0; j < ATTRIBUTE_DIMENSION; j++) {		
+			for (int t = 1; t <= splitBlock; t++) {
+				float thre = 1.0*t / splitBlock;
+				if (inode.attr[j] <= thre) {
+					num[j] = t;
+					break;
+				}
 			}
 			mapKey = mapKey * 10 + num[j];
 		}
@@ -811,10 +811,11 @@ void handleKwdAttr(int tn, vector<InerNode> nodeInerNode) {
 void handleINKwdAddr(int tn) {
 	set<set<int>> unionEditKwd; //used to record the 
 	map<int, locSkyline> unionLocSky;
+	// if there is problem when combine????
 	for (int k = 0; k < EGTree[tn].children.size(); k++) {
 		int cid = EGTree[tn].children[k];
 		set_union(EGTree[cid].editKwd.begin(), EGTree[cid].editKwd.end(), unionEditKwd.begin(), unionEditKwd.end(), unionEditKwd.begin());
-		set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionEditKwd.begin());
+		//set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionLocSky.begin());
 	}
 	// handle kwd information 
 	sort(unionEditKwd.begin(), unionEditKwd.end(), sortByKSize);
@@ -852,7 +853,7 @@ void handleINKwdAddr(int tn) {
 		int cid = EGTree[tn].children[k];
 		//set_union(EGTree[cid].editKwd.begin(), EGTree[cid].editKwd.end(), unionEditKwd.begin(), unionEditKwd.end(), unionEditKwd.begin());
 		if (k == 0) {
-			set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionEditKwd.begin());
+			set_union(EGTree[cid].locSky.begin(), EGTree[cid].locSky.end(), unionLocSky.begin(), unionLocSky.end(), unionLocSky.begin());
 		} 
 		else {
 			map<int, locSkyline>::iterator iterLocSkyline = EGTree[cid].locSky.begin();
@@ -876,14 +877,12 @@ void handleINKwdAddr(int tn) {
 }
 
 
-
-
-// calculate the distance matrix, algorithm shown in section 5.2 of paper
+// calculate the distance matrix
 void hierarchy_shortest_path_calculation(){
 	// level traversal
 	vector< vector<int> > treenodelevel;
 	
-	vector<int> current;
+	vector<int> current; // record all the treenodes in current level 
 	current.clear();
 	current.push_back(0);
 	treenodelevel.push_back(current);
@@ -918,9 +917,12 @@ void hierarchy_shortest_path_calculation(){
 
 	for ( int i = treenodelevel.size() - 1; i >= 0; i-- ){
 		for ( int j = 0; j < treenodelevel[i].size(); j++ ){
+			
 			tn = treenodelevel[i][j];
 
+			nodeInerNode.clear();
 			cands.clear();
+
 			if ( EGTree[tn].isleaf ){
 				//sort lefenodes and union_borders
 				sort(EGTree[tn].leafnodes.begin(),EGTree[tn].leafnodes.end());
@@ -953,9 +955,9 @@ void hierarchy_shortest_path_calculation(){
 				for (int k = 0; k < EGTree[tn].leafnodes.size(); k++) {
 					// for each leafnode we handle each adjacent edge of it
 					int nodei = EGTree[tn].leafnodes[k];
-					int adjSize = AdjList[nodei].size();
+					int adjSize = Nodes[nodei].adjnodes.size();
 					for (int p = 0; p < adjSize; p++) {
-						int nodej = AdjList[nodei][p];
+						int nodej = Nodes[nodei].adjnodes[p];
 						keyID = getKey(nodei, nodej);
 						if (visitedEdgeKey.count(keyID) == 0) {// this edge has not been visited
 							visitedEdgeKey.insert(keyID);
@@ -987,7 +989,9 @@ void hierarchy_shortest_path_calculation(){
 
 					if(k == 0) { //直接初始化
 						for(int l=0; l<ATTRIBUTE_DIMENSION; l++) {
-							memcpy(EGTree[tn].attrBound,EGTree[cid].attrBound,sizeof(EGTree[tn].attrBound));
+							EGTree[tn].attrBound[l][0] = EGTree[cid].attrBound[l][0];
+							EGTree[tn].attrBound[l][1] = EGTree[cid].attrBound[l][1];
+							//memcpy(EGTree[tn].attrBound,EGTree[cid].attrBound,sizeof(EGTree[tn].attrBound));
 						}
 						copy(EGTree[cid].union_kwd.begin(),EGTree[cid].union_kwd.end(),EGTree[tn].union_kwd.begin());
 
@@ -1053,6 +1057,7 @@ void hierarchy_shortest_path_calculation(){
 			}
 			//------------------------------以前代码-----------------------------------
 			// start to do min dis
+			/*
 			vertex_pairs.clear();
 				
 			// for each border, do min dis
@@ -1069,7 +1074,7 @@ void hierarchy_shortest_path_calculation(){
 					vertex_pairs[EGTree[tn].union_borders[k]][cands[p]] = result[p];
 				}
 			}
-
+			*/
 			
 			// IMPORTANT! after all border finished, degenerate graph,###用于简化Dijkstra算法距离计算
 			// first, remove inward edges
@@ -1107,6 +1112,8 @@ void hierarchy_shortest_path_calculation(){
 	}
 }
 
+// --------------------------M-- no use------------
+/*
 // dump distance matrix into file
 void hierarchy_shortest_path_save(){
 	FILE* fout = fopen( FILE_ONTREE_MIND, "wb" );
@@ -1131,6 +1138,7 @@ void hierarchy_shortest_path_save(){
 	fclose(fout);
 }
 
+// --------------------------M-- no use------------
 // load distance matrix from file
 void hierarchy_shortest_path_load(){
 	FILE* fin = fopen( FILE_ONTREE_MIND, "rb" );
@@ -1158,6 +1166,7 @@ void hierarchy_shortest_path_load(){
 	}
 	fclose(fin);
 }
+*/
 
 int mainFunction(int nOfNode, EdgeMapType EdgeMap){ // main function{
 	// init
@@ -1172,17 +1181,17 @@ int mainFunction(int nOfNode, EdgeMapType EdgeMap){ // main function{
 	TIME_TICK_END
 	TIME_TICK_PRINT("BUILD")
 
-	// dump EGTree
-	egtree_save();
-	
 	// calculate distance matrix
 	TIME_TICK_START
 	hierarchy_shortest_path_calculation();
 	TIME_TICK_END
 	TIME_TICK_PRINT("MIND")
 
+	// dump EGTree
+//-------------------------------M-- save in genData----
+	//egtree_save();
 	// dump distance matrix
-	hierarchy_shortest_path_save();
+	//hierarchy_shortest_path_save();
 
 	return 0;
 }
