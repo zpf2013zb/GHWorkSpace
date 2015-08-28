@@ -67,8 +67,8 @@ long long ts, te;
 
 /********************************DataStructure************************************/
 //-----basic infromation of gtree----------------------
-typedef struct{
-	double x,y;
+typedef struct {
+	double x, y;
 	vector<int> adjnodes;
 	vector<int> adjweight;
 	bool isborder;
@@ -102,7 +102,7 @@ typedef struct {
 //×Ô¶¨ÒåÅÅÐòº¯Êý  
 bool SortBySum(const locSkyline &v1, const locSkyline &v2)//×¢Òâ£º±¾º¯ÊýµÄ²ÎÊýµÄÀàÐÍÒ»¶¨ÒªÓëvectorÖÐÔªËØµÄÀàÐÍÒ»ÖÂ  
 {
-	int sum1=0, sum2=0;
+	int sum1 = 0, sum2 = 0;
 	for (int i = 0; i < Q.subSpace.size(); i++) {
 		if (Q.subSpace[i] == 1) {
 			sum1 += v1.blockID[i];
@@ -122,10 +122,10 @@ bool SortBySize(const kwdC &v1, const kwdC &v2)//×¢Òâ£º±¾º¯ÊýµÄ²ÎÊýµÄÀàÐÍÒ»¶¨ÒªÓ
 
 typedef struct {
 	//int 
-} ;
+};
 
-typedef struct{
-//--------------basic structure of gtree
+typedef struct {
+	//--------------basic structure of gtree
 	vector<int> borders; // the borders of this node
 	vector<float> refDistTQ; //²»±£´æ d-dist(q,b) for external
 	vector<float> distTQ;//²»±£´ædist(q,b) for node on the path
@@ -133,21 +133,21 @@ typedef struct{
 	bool isleaf;
 	vector<int> leafnodes;
 	int father;
-// ----- min dis -----
+	// ----- min dis -----
 	vector<int> union_borders; // for non leaf node, merging borders of children
 	vector<float> mind; // min dis, row by row of union_borders #########Ñ¹Ëõ´¦Àí£¬ÏÂÃæÕâÐ©¿ÉÄÜ²»ÐèÒª£¬¶øÇÒÐèÒªË¼¿¼Ìí¼ÓSkylineÒÔ¼°¹Ø¼ü×ÖÐÅÏ¢
-// ----- for pre query init, OCCURENCE LIST in paper -----
-	//vector<int> nonleafinvlist;
-	//vector<int> leafinvlist;
-	//vector<int> up_pos;
-	//vector<int> current_pos;
-// --------------extend structure of egtree for EGBU
+						// ----- for pre query init, OCCURENCE LIST in paper -----
+						//vector<int> nonleafinvlist;
+						//vector<int> leafinvlist;
+						//vector<int> up_pos;
+						//vector<int> current_pos;
+						// --------------extend structure of egtree for EGBU
 	set<int> union_kwd;
 	float attrBound[ATTRIBUTE_DIMENSION][2];
 	int pterToPF; //pointer to point file
 	float minDistTQ; //²»±£´æ
-// --------------extend structure of egtree for EGTD
-	//float skylineBound[ATTRIBUTE_DIMENSION][2]; // used to record the local skyline bound
+					 // --------------extend structure of egtree for EGTD
+					 //float skylineBound[ATTRIBUTE_DIMENSION][2]; // used to record the local skyline bound
 	set<set<int>> editKwd; //used to record the 
 	map<int, locSkyline> locSky;
 }TreeNode;
@@ -159,7 +159,7 @@ extern vector<TreeNode> EGTree;
 set<int> visitedEdgeKey;
 
 // init status struct
-typedef struct{
+typedef struct {
 	int tnid; // tree node id
 	set<int> nset; // node set
 }Status;
@@ -176,9 +176,9 @@ typedef struct {
 
 typedef struct {
 	int poid;
-    float distTV;
+	float distTV;
 	int attr[ATTRIBUTE_DIMENSION];
-    //unsigned long long vct;//Vector of keywords denoted by 64-bit
+	//unsigned long long vct;//Vector of keywords denoted by 64-bit
 	vector<int> kwd;
 } EPotFEntry;
 
@@ -196,28 +196,28 @@ idx_t objval; // edge cut for partitioning solution
 idx_t* part; // array of partition vector
 idx_t options[METIS_NOPTIONS]; // option array
 
-/********************************Function************************************/
-//-------------basic function of gtree
+							   /********************************Function************************************/
+							   //-------------basic function of gtree
 void options_setting(); // METIS setting options
 void init_input(int nOfNode, EdgeMapType EdgeMap); // load nodes and edges 
-void data_transform_init( set<int> &nset ); // transform original data format to that suitable for METIS
+void data_transform_init(set<int> &nset); // transform original data format to that suitable for METIS
 void init(int nOfNode, EdgeMapType EdgeMap); // combining two steps above
 void finalize(); // free space
-unordered_map<int,int> graph_partition( set<int> &nset ); // graph partition
+unordered_map<int, int> graph_partition(set<int> &nset); // graph partition
 void build(EdgeMapType EdgeMap); // egtree construction
-void egtree_save(); // dump gtree index to file
-void egtree_load(vector<TreeNode> EGTree);// load gtree index from file
-vector<int> dijkstra_candidate( int s, vector<int> &cands, vector<Node> &graph ); // dijkstra search, used for single-source shortest path search WITHIN one gtree leaf node!
+void egtree_save(const char* filename); // dump gtree index to file
+void egtree_load(const char* filename, vector<TreeNode>& EGTree);// load gtree index from file
+vector<int> dijkstra_candidate(int s, vector<int> &cands, vector<Node> &graph); // dijkstra search, used for single-source shortest path search WITHIN one gtree leaf node!
 void hierarchy_shortest_path_calculation(); // calculate the distance matrix
 //void hierarchy_shortest_path_save(); // dump distance matrix into file
 //void hierarchy_shortest_path_load(); // load distance matrix from file
 int mainFunction(int nOfNode, EdgeMapType EdgeMap); // main function
 
-//---------------extend function of egtree
-void makeEPtFiles(FILE *ptFile,char* treefile); // construct the extend point file
+													//---------------extend function of egtree
+void makeEPtFiles(FILE *ptFile, char* treefile); // construct the extend point file
 void makeEAdjListFiles(FILE *alFile); // construct the extend adjacentList file
 void BuildEBinaryStorage(const char* fileprefix); // construct the extend binary storage
-// ---------------extend function for EGTD
+												  // ---------------extend function for EGTD
 int rdominatel(InerNode left, InerNode right); //test is be dominate
 bool sortBySize(InerNode left, InerNode right); //sort by InterNode kwd size
 bool sortByKSize(set<int> left, set<int> right); //sort by set kwd size
