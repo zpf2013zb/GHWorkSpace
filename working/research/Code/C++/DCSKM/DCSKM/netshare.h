@@ -147,7 +147,7 @@ struct InerNode
 {
 	int poid;
     float dis;
-	int attr[ATTRIBUTE_DIMENSION];
+	float attr[ATTRIBUTE_DIMENSION];
     //unsigned long long vct;//Vector of keywords denoted by 64-bit
 	int nOfK;
 	set<int> kwd;

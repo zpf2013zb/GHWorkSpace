@@ -15,12 +15,13 @@ int num_K;
 
 int PoiNum;
 int KwdNum;
-int distsum;
+//int distsum;
 float STEP_SIZE;
 float MAX_SEG_DIST;
 float AVG_DEG;
 
 #define MAXLEVEL 10
+#define MAXKWD 64
 
 //------------
 struct PartAddr {
@@ -174,18 +175,32 @@ void makePtFiles(FILE *ptFile,char* treefile)
             fwrite(&(e->Nj),1,sizeof(int),ptFile);
             fwrite(&(e->dist),1,sizeof(float),ptFile);
             fwrite(&(size),1,sizeof(int),ptFile);
-            fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile); //???????????是不是要修改
+			// ------------M--modify this storage model
+			int bytes = 0;
+			for (int i = 0; i < size; i++) {
+				InerNode in = e->pts[i];
+				fwrite(&(in.poid), 1, sizeof(int), ptFile);
+				fwrite(&(in.dis), 1, sizeof(float), ptFile);
+				fwrite(in.attr, ATTRIBUTE_DIMENSION, sizeof(float), ptFile);
+				fwrite(&(in.nOfK), 1, sizeof(int), ptFile);
+				fwrite(&in.kwd.begin(), in.nOfK, sizeof(int), ptFile);
+				bytes = bytes + (2 + in.nOfK)*sizeof(int) + (ATTRIBUTE_DIMENSION + 1)*sizeof(float);
+			}
+
+            //fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile); //???????????是不是要修改
             e->FirstRow=key;
             PtMaxKey=key+e->pts.size()-1;	// useful for our special ordering !
 
             //printf("(key,value)=(%d,%d)\n",key,RawAddr);
             addentry(bt,&top_level,i_capacity,1,key,&num_written_blocks,RawAddr);
-            key+=sizeof(int)*3+sizeof(float);
-            key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
+			// -------------------M--modify key value
+            //key+=sizeof(int)*3+sizeof(float);
+            //key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
+			key += bytes;
         }
-        else
-            e->FirstRow=-1;		// also later used by AdjFile
-
+		else {
+			e->FirstRow = -1;		// also later used by AdjFile
+		}
         iter++;
     }
     finalize(bt);
@@ -201,13 +216,12 @@ void makePtFiles(FILE *ptFile,char* treefile)
 void makeAdjListFiles(FILE *alFile)
 {
     printf("making alFiles, dependency on makePtFiles\n");
-
     int key=0,size,PtSize;
     fwrite(&NodeNum,1,sizeof(int),alFile);
 
     // slotted header info.
     int addr=sizeof(int)+sizeof(int)*NodeNum;
-    for (int Ni=0; Ni<NodeNum; Ni++)
+    for (int Ni=1; Ni<=NodeNum; Ni++)
     {
         fwrite(&addr,1,sizeof(int),alFile);
         addr+=sizeof(int)+AdjList[Ni].size()*(2*sizeof(int)+sizeof(float));
@@ -235,7 +249,7 @@ void makeAdjListFiles(FILE *alFile)
     }
     distsum=distsum/2;
     printf("total edge dist: %f\n",distsum);
-    printf("total keywords num:%d\n",num_K);
+    //printf("total keywords num:%d\n",num_K);
 }
 
 void BuildBinaryStorage(const char* fileprefix)
@@ -244,14 +258,14 @@ void BuildBinaryStorage(const char* fileprefix)
     char tmpFileName[255];
 
     FILE *ptFile,*edgeFile;
-    sprintf(tmpFileName,"%s.p_d",fileprefix);
+    sprintf(tmpFileName,"%s\\pf.p_d",fileprefix);
     remove(tmpFileName); // remove existing file
     ptFile=fopen(tmpFileName,"w+");
-    sprintf(tmpFileName,"%s.p_bt",fileprefix);
+    sprintf(tmpFileName,"%s\\pf.p_bt",fileprefix);
     remove(tmpFileName); // remove existing file
     makePtFiles(ptFile,tmpFileName);
 
-    sprintf(tmpFileName,"%s.al_d",fileprefix);
+    sprintf(tmpFileName,"%s\\adj.al_d",fileprefix);
     remove(tmpFileName); // remove existing file
     edgeFile=fopen(tmpFileName,"w+");
     makeAdjListFiles(edgeFile);
@@ -264,7 +278,7 @@ void BuildBinaryStorage(const char* fileprefix)
 void makeEPtFiles(FILE *ptFile) {// construct the extend point file
 	//PtMaxUsing=true;
     //BTree* bt=initialize(treefile);
-    printf("making PtFiles\n");
+    printf("making EPtFiles\n");
 	//------treeNode start from 0
 	int treeNodeID = 0;
 	int nodeID=0;
@@ -288,10 +302,24 @@ void makeEPtFiles(FILE *ptFile) {// construct the extend point file
 					fwrite(&(e->Nj),1,sizeof(int),ptFile);
 					fwrite(&(e->dist),1,sizeof(float),ptFile);
 					fwrite(&(size),1,sizeof(int),ptFile);
-					fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile); //???????????是不是要修改
+
+					// ------------M--modify this storage model
+					int bytes = 0;
+					for (int i = 0; i < size; i++) {
+						InerNode in = e->pts[i];
+						fwrite(&(in.poid), 1, sizeof(int), ptFile);
+						fwrite(&(in.dis), 1, sizeof(float), ptFile);
+						fwrite(in.attr, ATTRIBUTE_DIMENSION, sizeof(float), ptFile);
+						fwrite(&(in.nOfK), 1, sizeof(int), ptFile);
+						fwrite(&in.kwd.begin(), in.nOfK, sizeof(int), ptFile);
+						bytes = bytes + (2 + in.nOfK)*sizeof(int) + (ATTRIBUTE_DIMENSION + 1)*sizeof(float);
+					}
+
+					//fwrite(&(e->pts[0]),e->pts.size(),sizeof(InerNode),ptFile); //???????????是不是要修改
 					e->FirstRow=key;
-					key+=sizeof(int)*3+sizeof(float);
-					key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
+					//key+=sizeof(int)*3+sizeof(float);
+					//key+=e->pts.size()*sizeof(InerNode); //Modified by Qin Xu
+					key += bytes;
 				} else {
 					e->FirstRow=-1;		// also later used by AdjFile
 				}
@@ -311,8 +339,9 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 	//------treeNode start from 0
 	int treeNodeID = 0;
 	int nodeID=0;
-	int key=0,size,PtSize,addr;
-	int *buf = new int[ Nodes.size() ];
+	int key=0,size,PtSize,addr=0;
+	//int *buf = new int[ NodeNum ];
+	float distsum = 0;
 	fwrite(&NodeNum,1,sizeof(int),alFile);
 	addr = addr + sizeof(int);
 	//vector<TreeNode>::iterator it=EGTree.begin();
@@ -326,30 +355,34 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 			//partID[nodeID] = treeNodeID;
 			// put the adjacent nodes of this node into adjList
 			//size=AdjList[Ni].size();
-			//fwrite(&(size),1,sizeof(int),alFile);
-			size=AdjList[treeNodeID].size();
+			//fwrite(&(size),1,sizeof(int),alFilDe);
+			size=AdjList[nodeID].size();
 			fwrite(&(size),1,sizeof(int),alFile);
 			addr = addr + sizeof(int);
-			for (int k=0; k<AdjList[treeNodeID].size(); k++)
+			for (int k=0; k<AdjList[nodeID].size(); k++)
 			{
-				int Nk=AdjList[treeNodeID][k];	// Nk can be smaller or greater than Ni !!!
-				edge* e=EdgeMap[getKey(treeNodeID,Nk)];
+				int Nk=AdjList[nodeID][k];	// Nk can be smaller or greater than Ni !!!
+				edge* e=EdgeMap[getKey(nodeID,Nk)];
 				PtSize=e->pts.size();
+
 				fwrite(&Nk,1,sizeof(int),alFile);
 				fwrite(&(e->dist),1,sizeof(float),alFile);
 				//keyword information
 				int nOfKwd = e->kwds.size();
 				fwrite( &nOfKwd, sizeof(int), 1, alFile );
-				copy( e->kwds.begin(), e->kwds.end(), buf );
-				fwrite( buf, sizeof(int), nOfKwd, alFile);
+				//copy( e->kwds.begin(), e->kwds.end(), buf );
+				fwrite( &e->kwds.begin(), sizeof(int), nOfKwd, alFile);
 				//attribute information
 				//fwrite( &nOfKwd, sizeof(int), 1, alFile );
 				//copy( e->attr, e->kwds.end(), buf );
-				fwrite( e->attrBound, sizeof(int), ATTRIBUTE_DIMENSION*2, alFile);
-
+				for (int b = 0; b < ATTRIBUTE_DIMENSION; b++) {
+					fwrite(&e->attrBound[b][0], sizeof(float), 1, alFile);
+					fwrite(&e->attrBound[b][1], sizeof(float), 1, alFile);
+				}
+				//fwrite( e->attrBound, sizeof(int), ATTRIBUTE_DIMENSION*2, alFile);
 				fwrite(&(e->FirstRow),1,sizeof(int),alFile); // use FirstRow for other purpose ...
 				//printf("(Ni,Nj,dataAddr)=(%d,%d,%d)\n",Ni,Nk,e->FirstRow);
-				addr = addr+(nOfKwd+ATTRIBUTE_DIMENSION*2+3)*sizeof(int)+sizeof(float);
+				addr = addr+(nOfKwd+3)*sizeof(int)+(1+2*ATTRIBUTE_DIMENSION)*sizeof(float);
 				distsum+=e->dist;
 			}
 				key=treeNodeID;
@@ -357,31 +390,41 @@ void makeEAdjListFiles(FILE *alFile) { // construct the extend adjacentList file
 	}
     distsum=distsum/2;
     printf("total edge dist: %f\n",distsum);
-    printf("total keywords num:%d\n",num_K);
+    //printf("total keywords num:%d\n",num_K);
 }
 void BuildEBinaryStorage(const char* fileprefix) { // construct the extend binary storage
 	BlkLen=getBlockLength();
     char tmpFileName[255];
 
     FILE *ptFile,*edgeFile;
-    sprintf(tmpFileName,"%s.ep_d",fileprefix);
+    sprintf(tmpFileName,"%s\\pf.ep_d",fileprefix);
     remove(tmpFileName); // remove existing file
     ptFile=fopen(tmpFileName,"w+");
     //sprintf(tmpFileName,"%s.p_bt",fileprefix);
     //remove(tmpFileName); // remove existing file
     makeEPtFiles(ptFile);
 
-    sprintf(tmpFileName,"%s.eal_d",fileprefix);
+    sprintf(tmpFileName,"%s\\adj.eal_d",fileprefix);
     remove(tmpFileName); // remove existing file
     edgeFile=fopen(tmpFileName,"w+");
     makeEAdjListFiles(edgeFile);
+	// reserve the part and address information
+	partAddrSave(fileprefix);
 
     fclose(ptFile);
     fclose(edgeFile);
 }
 
-void partAddrSave(FILE *paFile) {
+void partAddrSave(const char* fileprefix) {
+
 	printf("making partAddrFile\n");
+	FILE *paFile;
+	char tmpFileName[255];
+
+	sprintf(tmpFileName, "%s\\part.inf", fileprefix);
+	remove(tmpFileName); // remove existing file
+	paFile = fopen(tmpFileName, "w+");
+
 	fwrite(&NodeNum,1,sizeof(int),paFile);
 	map<int,PartAddr>::iterator my_Itr;  
 	for(my_Itr=partID.begin(); my_Itr!=partID.end(); ++my_Itr){
@@ -718,15 +761,13 @@ int main(int argc, char *argv[])
     //GenOutliers(EdgeNum*cr.getParameterOutlierDensity(), cr.getParameterAvgKeywordsNumberOfOutliers());
     //printf("Avg keyword # per object:%f\n",float(num_K)/num_D);
     
-    BuildBinaryStorage(cr.getDataFileName().c_str());
-    
-
+    BuildBinaryStorage(cr.getIndexFileName().c_str());
 	//--------------------extend for egtree-------------------
 	mainFunction(NodeNum, EdgeMap);
-	BuildEBinaryStorage(cr.getDataFileName().c_str());
+	BuildEBinaryStorage(cr.getIndexFileName().c_str());
 //-------------M-- save in this part---------
 	egtree_save();
-    ofstream fout(cr.getDataFileName()+"_Information");    
+    ofstream fout(cr.getIndexFileName()+"_Information");    
     fout<<"Number of Vertexes:"<<NodeNum<<endl;
     fout<<"Number of Edges:"<<EdgeNum<<endl;
     fout<<"Total Keyowords Number:"<<KwdNum<<endl;

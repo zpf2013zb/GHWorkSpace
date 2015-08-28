@@ -67,7 +67,7 @@ public:
 	//---------------------M--add the new function-------------
 	// data relevant 
 	// index relevant
-
+	std::string getIndexFileName();
 	// query relevant
 	// return the query distance constraint
 	float getParameterDistanceConstraint();

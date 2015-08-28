@@ -218,7 +218,7 @@ void makeEPtFiles(FILE *ptFile,char* treefile); // construct the extend point fi
 void makeEAdjListFiles(FILE *alFile); // construct the extend adjacentList file
 void BuildEBinaryStorage(const char* fileprefix); // construct the extend binary storage
 // ---------------extend function for EGTD
-int rdominatel(InerNode left, InerNode right)); //test is be dominate
+int rdominatel(InerNode left, InerNode right); //test is be dominate
 bool sortBySize(InerNode left, InerNode right); //sort by InterNode kwd size
 bool sortByKSize(set<int> left, set<int> right); //sort by set kwd size
 int editDistanceRTL(set<int> kwd1, set<int> kwd2); //return the edit distance between two set kwd

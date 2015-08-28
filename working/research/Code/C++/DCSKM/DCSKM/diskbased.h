@@ -19,6 +19,8 @@ int BlkLen;
 #define AdjFid 	4000
 #define Ref(obj) ((void*)&obj)
 
+//------------------------------M-- no use-----------
+/*
 // no use
 struct NodeStruct
 {
@@ -98,6 +100,9 @@ int inline pointQuery(BTree* bt,int key,int& TreeKey)
     }
     return -6;
 }
+*/
+
+
 // read the blockID from FC-cache-myfile
 char* getFlatBlock(FILE* myfile,int BlockId)
 {
@@ -331,6 +336,9 @@ void printTree(BTree* bt)
 FastArray<float> xcrd,ycrd;
 FILE** views;	//=fopen(visualf,"w");
 int Cnum;
+
+//-------------------------------M--no use---------------
+/*
 // no use
 void openVisualFiles(const char* nodename,const char* outprefix,int _Cnum)
 {
@@ -388,5 +396,5 @@ void closeVisualFiles()  	// close files
     for (int i=0; i<Cnum+1; i++) fclose(views[i]);	// including file for outliers
     delete[] views;
 }
-
+*/
 

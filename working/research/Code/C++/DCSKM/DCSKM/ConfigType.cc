@@ -198,6 +198,12 @@ std::string ConfigType::getQueryResultFileName()
     return QUERY_PATH + seperator + "result" + getQueryFileName().substr(pos+1)+std::string("_ResultFile");
 }
 
+std::string ConfigType::getIndexFileName()
+{
+	std::string key = "map";
+	return INDEX_PATH + getConfigStr(key);
+}
+
 float ConfigType::getParameterDistanceConstraint()
 {
 	std::string key = "querydistanceconstraint";
