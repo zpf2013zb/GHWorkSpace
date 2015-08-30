@@ -3,6 +3,7 @@
 #include <queue>
 #include <bitset>
 #include <algorithm>
+#include <time.h>
 #include "diskbased.h"
 #include "ConfigType.h"
 #include "KeywordsGenerator.h"
@@ -11,9 +12,10 @@
 #include "DCSKMQ.h"
 
 using namespace std;
-// all paremeters
+
+// global paremeters
 #define CandidateSet vector<POI>
-#define ResultSet vector<int>
+#define ResultSet vector<int> // record the id of poi
 
 #define EA 1
 #define EGBU 2
@@ -23,34 +25,37 @@ using namespace std;
 #define hVisited 5
 #define unVisited 6
 
-//#define halfVisited vector<int>
-int nOfDomiTest;
-int nOfEdgeExpd;
-int bottomToUp = 1;
+// -----------performance parameters----------------
+int nOfDominateTest;
+int nOfEdgeExpended; // whether the pois of this edge are visited
+int nOfPOIVisited; 
+clock_t start, end;
+
+// -----------algorihtms execute parameters------------
 int algorithmId;
 float queryEdgeDist;
 CandidateSet cS;
 ResultSet rS;
 
-int poicnt = 0;
 QueryPoint Q;
 
 // for dijkstra
-//halfVQueue hvQ;
-map<edgePair, edgeState, eSComparison> visitedState;
-map<int, float> distTQ;
-dVQueue dvq;
+// halfVQueue hvQ;
+//map<edgePair, edgeState, eSComparison> edgeStates;
+map<int, edgeState> edgeStates; // <edge, edgeState>
+map<int, float> distTQ; // <vertex, distance>
+dVQueue dvq; 
+set<int> visitedVtx;
 
 // for EGBU
-
 struct PartAddr {
 	int part;
 	int addr;
 };
 
-map<int, PartAddr> paID;
-vector<TreeNode> EGT;
-set<int> Visited; //record the  id of visited treeNodeID
+map<int, PartAddr> paID; // <vertex, address&partID>
+vector<TreeNode> EGT; // load the egtree index
+//set<int> visitedTreeNode; //record the  id of visited treeNodeID
 
 struct TreeNodeC
 {
@@ -62,27 +67,17 @@ struct TreeNodeC
 
 typedef	priority_queue<TreeNode, vector<TreeNode>, TreeNodeC> TreeNodeQ;
 TreeNodeQ tnq;
-vector<int> pathID;
+vector<int> pathID; // record the path from query to upmost treenode id
 
 // for EGTD
-struct TreeNodeTD
-{
-	bool operator () (const TreeNode& left, const TreeNode& right) const
-	{
-		return left.minDistTQ > right.minDistTQ;
-	}
-};
-
-typedef	priority_queue<TreeNode, vector<TreeNode>, TreeNodeTD> TreeNodeTDQ;
-TreeNodeTDQ tdnq;
-set<int> visitedSet;
+set<int> visitedTNSet; // record the visited tree nodes
 
 struct CandTDValue {
 	locSkyline ls;
 	set<POI> poi;
 };
 
-//×Ô¶¨ÒåÅÅÐòº¯Êý  
+//×Ô¶¨ÒåÅÅÐòº¯Êý£¬ÒªÇóÊÇµÝÔöº¯Êý
 bool SortByQuerySum(const CandTDValue &v1, const CandTDValue &v2)//×¢Òâ£º±¾º¯ÊýµÄ²ÎÊýµÄÀàÐÍÒ»¶¨ÒªÓëvectorÖÐÔªËØµÄÀàÐÍÒ»ÖÂ  
 {
 	int sum1 = 0, sum2 = 0;
@@ -92,18 +87,17 @@ bool SortByQuerySum(const CandTDValue &v1, const CandTDValue &v2)//×¢Òâ£º±¾º¯Êýµ
 			sum2 += v2.ls.blockID[i];
 		}
 	}
-	if (sum1 < sum2) return true;
-	else return false;
+	return sum1 > sum2;
 	//return v1.kwdCombination.size() > v2.kwdCombination.size();//½µÐòÅÅÁÐ  
 }
-map<int, CandTDValue> cSTD; // record the candidate POI, which is organized by the block id
+map<int, CandTDValue> cSTD; // record the candidate POI, which is organized by the block id <blockID, ls&pois>
 
-							// to verify whether R contains by L
+// to verify whether R contains by L
 bool LcontianRIKwd(const set<int> L, const set<int> R)
 {
 	//High bit set to zero
 	//R&=tmp;
-
+	/*
 	if (L.size() < R.size()) return false;
 	set<int>::iterator it;
 	for (it = R.begin(); it != R.end(); it++) {
@@ -115,15 +109,18 @@ bool LcontianRIKwd(const set<int> L, const set<int> R)
 		}
 	}
 	return  true;
-
-	//set<int> temp;
-	//set_intersection(L.begin(), L.end(), R.begin(), R.end(), temp.begin());
+	*/
+	set<int> temp;
+	set_intersection(L.begin(), L.end(), R.begin(), R.end(), temp.begin());
+	if (temp.size() == R.size()) return true;
+	return false;
 }
 // smaller is better
-bool isBeDominate(POI poi, CandidateSet cS, const QueryPoint &Q) {
-	for (int i = 0; i<cS.size(); ) {
-		POI temp = cS[i];
-		nOfDomiTest++;
+void updatecSDominate(POI poi, CandidateSet &cS) {
+	vector<POI>::iterator it = cS.begin();
+	for (; it != cS.end(); ) {
+		POI temp = *it;
+		nOfDominateTest++;
 		bool pDt = true;
 		bool tDp = true;
 		int pEt = 0;
@@ -144,23 +141,31 @@ bool isBeDominate(POI poi, CandidateSet cS, const QueryPoint &Q) {
 		}
 		// poi dominate temp
 		if (pDt&&pEt != Q.subSpace.count()) {
-			cS.erase(cS.begin() + i);
+			it  = cS.erase(it);
+			continue;
 		}
 		if (tDp&&pEt != Q.subSpace.count()) {
-			return true;
+			return ;
+		}
+		if (!pDt&&!tDp) { // »¥²»Ö§Åä
+			it++;
+			continue;
 		}
 		if (pEt == Q.subSpace.count()) {
-			i++;
+			cS.push_back(poi);
+			return ;
 		}
-		//nOfDomiTest++;
+		//nOfDominateTest++;
 	}
-	return false;
+	if (it == cS.end()) {
+		cS.push_back(poi);
+	}
 }
 
 bool isBeBoundDominate(float attrBound[ATTRIBUTE_DIMENSION][2], CandidateSet cS, const QueryPoint &Q) {
 	for (int i = 0; i<cS.size(); ) {
 		POI temp = cS[i];
-		nOfDomiTest++;
+		nOfDominateTest++;
 		bool bDt = true;
 		bool tDb = true;
 		int pEt = 0;
@@ -186,7 +191,7 @@ bool isBeBoundDominate(float attrBound[ATTRIBUTE_DIMENSION][2], CandidateSet cS,
 		if (pEt == Q.subSpace.count()) {
 			i++;
 		}
-		//nOfDomiTest++;
+		//nOfDominateTest++;
 	}
 	return false;
 }
@@ -195,7 +200,7 @@ bool isBeBoundDominate(float attrBound[ATTRIBUTE_DIMENSION][2], CandidateSet cS,
 bool isBeLocSkyDominate(float attrBound[ATTRIBUTE_DIMENSION][2], CandidateSet cS, const QueryPoint &Q) {
 	for (int i = 0; i<cS.size(); ) {
 		POI temp = cS[i];
-		nOfDomiTest++;
+		nOfDominateTest++;
 		bool bDt = true;
 		bool tDb = true;
 		int pEt = 0;
@@ -221,7 +226,7 @@ bool isBeLocSkyDominate(float attrBound[ATTRIBUTE_DIMENSION][2], CandidateSet cS
 		if (pEt == Q.subSpace.count()) {
 			i++;
 		}
-		//nOfDomiTest++;
+		//nOfDominateTest++;
 	}
 	return false;
 }
@@ -245,14 +250,21 @@ void partAddrLoad(const char* filename, map<int, PartAddr> &partID) {
 }
 
 void initialQuery(const char* fileprefix) {
-	nOfDomiTest = 0;
-	nOfEdgeExpd = 0;
+	nOfDominateTest = 0;
+	nOfEdgeExpended = 0;
+	nOfPOIVisited = 0;
+	cS.clear();
+	rS.clear();
+	edgeStates.clear();
+	distTQ.clear();
+	
 	char tmpFileName[255];
 
 	if (algorithmId == EA) { // EA
 
 	} //---------------M-- load egtree and partAddr
 	else {
+		pathID.clear();
 		// load egtree
 		sprintf(tmpFileName, "%s\\egindex.eg_inx", fileprefix);
 		egtree_load(tmpFileName, EGT);
@@ -265,7 +277,8 @@ void initialQuery(const char* fileprefix) {
 
 		}
 		else {
-
+			visitedTNSet.clear(); 
+			cSTD.clear();		
 		}
 
 	}
@@ -278,313 +291,283 @@ void printResult() {
 }
 
 void EABasedAlgorithm(const QueryPoint &Q) {
-	DStepQueue sQ;
-	int poicnt = 0;
-	int roadnodecnt = 0;
-
 	//Data
 	int Ni = Q.Ni, Nj = Q.Nj;//Ni must less than Nj
 	int AdjGrpAddr, AdjListSize, NewNodeID, PtGrpKey, PtNumOnEdge;
 	//unsigned long long keywords;
 	set<int> tempKwds;
 	int *tempKwd;
+	int nKwd;
 	float EdgeDist, PtDist;
 	//Precess sub edge of Q.Ni,Q.Nj divided by Q
 	AdjGrpAddr = getAdjListGrpAddr(Ni);
 	getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-	for (int i = 0; i<AdjListSize; i++) {
+	for (int i = 0; i < AdjListSize; i++) {
 		getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
 		//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
 		if (NewNodeID == Nj) {
 			getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
 			getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
 
-			nOfEdgeExpd++;
-
+			//nOfEdgeExpended++;
 			//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
+
 			if (PtGrpKey == -1) {
 				//cout<<"No POI existed on Edge where Q located."<<endl;
 			}
 			else {
 				getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
+				nOfEdgeExpended++;
 				//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 				//Notice the order POI visited on edge
 				for (int j = 0; j<PtNumOnEdge; j++) {
-					poicnt++;
+					nOfPOIVisited++;
 					getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
+					getVarE(PT_NKWD, Ref(nKwd), PtGrpKey, j);
 					getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-					int num = sizeof(tempKwd) / sizeof(int);
-					for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
+					//int num = sizeof(tempKwd) / sizeof(int);
+					for (int loop = 0; loop<nKwd; loop++) {
 						int temp;
-						memcpy(&temp, tempKwd + loop, sizeof(int));
+						memcpy(&temp, tempKwd + loop*sizeof(int), sizeof(int));
 						tempKwds.insert(temp);
 					}
 
 					if (LcontianRIKwd(tempKwds, Q.kwd)) {
 						POI tmp;
 						tmp.dist_toquery = fabs(PtDist - Q.dist_Ni);
-						getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-						getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
+						//getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
+						//getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 						if (tmp.dist_toquery <= Q.distCnst) {
-							if (isBeDominate(tmp, cS, Q)) {
-							}
-							else {
-								cS.push_back(tmp);
-							}
+							getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
+							getVarE(PT_P, &tmp.poid, PtGrpKey, j);
+							updatecSDominate(tmp, cS);
 						}
 					}// endif
 				}
 
 			}// endelse
+
+			break; // exit the loop
 		}
 	}
 	// record the visited state of edge
-	edgePair epi, epj;
-	edgeState esi, esj;
-	epi.Ni = 0;
-	epi.Nj = Q.Ni;
+	//edgePair epi, epj;
+	int edgeKey; // key 
+	edgeState esi; //value
+	//epi.Ni = 0;
+	//epi.Nj = Q.Ni;
+	edgeKey = getKey(Ni, Nj);
 	esi.vState = visited;
-	esi.iDisToQuery = 0;
-	esi.jDisToQuery = Q.dist_Ni;
-
-	epj.Ni = 0;
-	epj.Nj = Q.Nj;
-	esj.iDisToQuery = 0;
-	esj.jDisToQuery = EdgeDist - Q.dist_Ni;
-
-	visitedState[epi] = esi;
-	visitedState[epj] = esj;
-
+	esi.iDisToQuery = Q.dist_Ni;
+	esi.jDisToQuery = EdgeDist - Q.dist_Ni;
+	edgeStates[edgeKey] = esi;
+	//epj.Ni = 0;
+	//epj.Nj = Q.Nj;
+	//esj.iDisToQuery = 0;
+	//esj.jDisToQuery = EdgeDist - Q.dist_Ni;
+	//edgeStates[epi] = esi;
 
 	// record the visited node information
+	distTQ[Ni] = Q.dist_Ni;
+	distTQ[Nj] = EdgeDist - Q.dist_Ni;
+	/*
 	dijkVisit dvi, dvj;
-	dvi.N = Q.Ni;
+	dvi.N = Ni;
 	dvi.disTQ = Q.dist_Ni;
 
-	dvj.N = Q.Nj;
+	dvj.N = Nj;
 	dvj.disTQ = EdgeDist - Q.dist_Ni;
+	if(dvi.disTQ < Q.distCnst) dvq.push(dvi);
+	if (dvj.disTQ < Q.distCnst) dvq.push(dvj);
+	*/
+	// traverse the vertex in the dijkstra order
+	float minDist;
+	int minVertexID;
 
-	dvq.push(dvi);
-	dvq.push(dvj);
+	while (!distTQ.empty()) {
+		//dijkVisit tmpDV = dvq.top();
+		//dvq.pop();
+		minDist = -1;
+		map<int, float>::iterator itd= distTQ.begin();
+		for (; itd != distTQ.end(); itd++) {
+			if (minDist == -1) {
+				minVertexID = itd->first;
+				minDist = itd->second;
+			}
+			else {
+				if (itd->second < minDist) {
+					minDist = itd->second;
+					minVertexID = itd->first;
+				}
+			}
+		}
+		if (minDist >= Q.distCnst) break;
+		//visited.insert(minpos);
+		visitedVtx.insert(minVertexID);
+		distTQ.erase(minVertexID);
 
-	while (!dvq.empty()) {
-		dijkVisit tmpDV = dvq.top();
-		dvq.pop();
-		if (tmpDV.disTQ <= Q.distCnst) {
-			AdjGrpAddr = getAdjListGrpAddr(tmpDV.N);
-			getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-			for (int i = 0; i<AdjListSize; i++) {
-				getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
-				getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
-				getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
-				edgePair ep;
-				ep.Ni = NewNodeID<tmpDV.N ? NewNodeID : tmpDV.N;
-				ep.Nj = NewNodeID>tmpDV.N ? NewNodeID : tmpDV.N;
-				map<edgePair, edgeState, eSComparison>::iterator iter;
-				iter = visitedState.find(ep);
-				if (iter != visitedState.end()) {
-					if (visitedState[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
-						visitedState[ep].vState == visited;
-						//---Ìí¼Ó¾àÀëvisitedState
-						if (tmpDV.N < NewNodeID) {
-							visitedState[ep].iDisToQuery = tmpDV.disTQ;
-						}
-						else {
-							visitedState[ep].jDisToQuery = tmpDV.disTQ;
-						}
-						//´ÓÁ½¶Ë¼ÓÈëPOIs
-						if (PtGrpKey == -1) {
-							//cout<<"No POI existed on Edge where Q located."<<endl;
-						}
-						else {
-
-							getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-							//Notice the order POI visited on edge
-							for (int j = 0; j<PtNumOnEdge; j++) {
-								poicnt++;
-								getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-								getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-								int num = sizeof(tempKwd) / sizeof(int);
-								for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-									int temp;
-									memcpy(&temp, tempKwd + loop, sizeof(int));
-									tempKwds.insert(temp);
-								}
-
-								if (LcontianRIKwd(tempKwds, Q.kwd)) {
-									POI tmp;
-									//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
-									float d1, d2;
-									d1 = visitedState[ep].iDisToQuery + PtDist;
-									d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
-									tmp.dist_toquery = d1<d2 ? d1 : d2;
-
-									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-									if (tmp.dist_toquery <= Q.distCnst) {
-										if (isBeDominate(tmp, cS, Q)) {
-										}
-										else {
-											cS.push_back(tmp);
-										}
-									}
-								}// endif
-							}
-						}
-					}
-					else if (visitedState[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
-																   //---Ìí¼Ó¾àÀëvisitedState
-						if (tmpDV.N < NewNodeID) {
-							visitedState[ep].iDisToQuery = tmpDV.disTQ;
-						}
-						else {
-							visitedState[ep].jDisToQuery = tmpDV.disTQ;
-						}
+		// handle the adjacent edge of this vertex
+		AdjGrpAddr = getAdjListGrpAddr(minVertexID);
+		getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
+		for (int i = 0; i<AdjListSize; i++) {
+			getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
+			getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
+			getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
+			
+			//edgePair ep;
+			int ek;
+			ek = getKey(minVertexID, NewNodeID);
+			if (edgeStates.find(ek) != edgeStates.end()) { // ek has been visited
+				if (edgeStates[ek].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
+					edgeStates[ek].vState == visited;
+					//---Ìí¼Ó¾àÀëedgeStates
+					if (minVertexID < NewNodeID) {
+						edgeStates[ek].iDisToQuery = minDist;
 					}
 					else {
+						edgeStates[ek].jDisToQuery = minDist;
+					}
+					//´ÓÁ½¶Ë¼ÓÈëPOIs
+					if (PtGrpKey == -1) {
+						//cout<<"No POI existed on Edge where Q located."<<endl;
+					}
+					else {
+						nOfEdgeExpended++;
+						getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
+						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+						//Notice the order POI visited on edge
+						for (int j = 0; j<PtNumOnEdge; j++) {
+							nOfPOIVisited++;
+							getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
+							getVarE(PT_NKWD, Ref(nKwd), PtGrpKey, j);
+							getVarE(PT_KWD, tempKwd, PtGrpKey, j);
+							//int num = sizeof(tempKwd) / sizeof(int);
+							for (int loop = 0; loop<nKwd; loop++) {
+								int temp;
+								memcpy(&temp, tempKwd + loop*sizeof(int), sizeof(int));
+								tempKwds.insert(temp);
+							}
 
+							if (LcontianRIKwd(tempKwds, Q.kwd)) {
+								POI tmp;
+								//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+								float d1, d2;
+								d1 = edgeStates[ek].iDisToQuery + PtDist;
+								d2 = edgeStates[ek].jDisToQuery + EdgeDist - PtDist;
+								tmp.dist_toquery = d1<d2 ? d1 : d2;
+
+								if (tmp.dist_toquery <= Q.distCnst) {
+									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
+									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
+									updatecSDominate(tmp, cS);
+								}
+							}// endif
+						}
+					}
+				}
+				else { //ÐÞ¸Ä¾àÀë
+					   //---Ìí¼Ó¾àÀëedgeStates
+					if (minVertexID < NewNodeID) {
+						edgeStates[ek].iDisToQuery = minDist;
+					}
+					else {
+						edgeStates[ek].jDisToQuery = minDist;
+					}
+				}
+			}
+			else { // ek has not been visited
+				//edgePair ep;
+				edgeState es;
+				if (minVertexID < NewNodeID) {
+					//ep.Ni = tmpDV.N;
+					//ep.Nj = NewNodeID;
+					es.iDisToQuery = minDist;
+					es.jDisToQuery = INFINITE_MAX;
+				}
+				else {
+					//ep.Ni = NewNodeID;
+					//ep.Nj = tmpDV.N;
+					es.iDisToQuery = INFINITE_MAX;
+					es.jDisToQuery = minDist;
+				}
+
+				// ÈçºÎ´¦ÀídijksÎÊÌâ£¿£¿£¿
+
+				if (visitedVtx.find(NewNodeID) != visitedVtx.end()) {
+					if (distTQ[NewNodeID]>(minDist + EdgeDist)) {
+						distTQ[NewNodeID] = minDist + EdgeDist;
 					}
 				}
 				else {
-					edgePair ep;
-					edgeState es;
-					if (tmpDV.N < NewNodeID) {
-						ep.Ni = tmpDV.N;
-						ep.Nj = NewNodeID;
-						es.iDisToQuery = tmpDV.disTQ;
-						es.jDisToQuery = INFINITE_MAX;
+					distTQ[NewNodeID] = minDist + EdgeDist;
+				}
+				// label this edge state
+				if (distTQ[NewNodeID] <= Q.distCnst) {
+					//½«ÕûÌõ±ß¼ÓÈë
+					es.vState = visited;
+					edgeStates[ek] = es;
+					
+					if (PtGrpKey == -1) {
+						//cout<<"No POI existed on Edge where Q located."<<endl;
 					}
 					else {
-						ep.Ni = NewNodeID;
-						ep.Nj = tmpDV.N;
-						es.iDisToQuery = INFINITE_MAX;
-						es.jDisToQuery = tmpDV.disTQ;
-					}
-					if (distTQ.find(NewNodeID) != distTQ.end()) {
-						if (distTQ[NewNodeID]>(tmpDV.disTQ + EdgeDist)) {
-							distTQ[NewNodeID] = tmpDV.disTQ + EdgeDist;
-						}
-					}
-					else {
-						distTQ[NewNodeID] = tmpDV.disTQ + EdgeDist;
-					}
-					if (distTQ[NewNodeID] <= Q.distCnst) {
-						//½«ÕûÌõ±ß¼ÓÈë
-						es.vState = visited;
-						visitedState[ep] = es;
+						nOfEdgeExpended++;
+						getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
+						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
+						//Notice the order POI visited on edge
+						for (int j = 0; j<PtNumOnEdge; j++) {
+							nOfPOIVisited++;
+							getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
+							getVarE(PT_NKWD, Ref(nKwd), PtGrpKey, j);
+							getVarE(PT_KWD, tempKwd, PtGrpKey, j);
+							//int num = sizeof(tempKwd) / sizeof(int);
+							for (int loop = 0; loop<nKwd; loop++) {
+								int temp;
+								memcpy(&temp, tempKwd + loop*sizeof(int), sizeof(int));
+								tempKwds.insert(temp);
+							}
 
-						if (PtGrpKey == -1) {
-							//cout<<"No POI existed on Edge where Q located."<<endl;
-						}
-						else {
-							getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-							//Notice the order POI visited on edge
-							for (int j = 0; j<PtNumOnEdge; j++) {
-								poicnt++;
-								getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
+							if (LcontianRIKwd(tempKwds, Q.kwd)) {
+								POI tmp;
+								//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
+								float d1, d2;
+								d1 = edgeStates[ek].iDisToQuery + PtDist;
+								d2 = edgeStates[ek].jDisToQuery + EdgeDist - PtDist;
+								tmp.dist_toquery = d1<d2 ? d1 : d2;
 
-								getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-								int num = sizeof(tempKwd) / sizeof(int);
-								for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-									int temp;
-									memcpy(&temp, tempKwd + loop, sizeof(int));
-									tempKwds.insert(temp);
-								}
-
-								if (LcontianRIKwd(tempKwds, Q.kwd)) {
-									POI tmp; //ÕâÊ±ºò¿ÉÄÜ²»ÊÇÕæÊµ¾àÀë,Ò²²»»áÓ°Ïì½á¹û
-									if (tmpDV.N<NewNodeID) {
-										tmp.dist_toquery = tmpDV.disTQ + PtDist;
-									}
-									else {
-										tmp.dist_toquery = tmpDV.disTQ + EdgeDist - PtDist;
-									}
-
-
+								if (tmp.dist_toquery <= Q.distCnst) {
 									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
 									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-									if (tmp.dist_toquery <= Q.distCnst) {
-										if (isBeDominate(tmp, cS, Q)) {
-										}
-										else {
-											cS.push_back(tmp);
-										}
-									}
-								}// endif
-							}
-						}
-
-					}
-					else {// Èç¹ûÖ»ÓÐ²¿·ÖÔÚ±ßÉÏ£¬hVisited
-						es.vState = hVisited;
-						visitedState[ep] = es;
-					}
-				}
-
-				//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
-				//getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
-				if (PtGrpKey == -1) {
-					//cout<<"No POI existed on Edge where Q located."<<endl;
-				}
-				else {
-
-					getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-					//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-					//Notice the order POI visited on edge
-					for (int j = 0; j<PtNumOnEdge; j++) {
-						poicnt++;
-						getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-						getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-						int num = sizeof(tempKwd) / sizeof(int);
-						for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-							int temp;
-							memcpy(&temp, tempKwd + loop, sizeof(int));
-							tempKwds.insert(temp);
-						}
-
-						if (LcontianRIKwd(tempKwds, Q.kwd)) {
-							POI tmp;
-							tmp.dist_toquery = fabs(PtDist - Q.dist_Ni);
-							getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-							getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-							if (tmp.dist_toquery <= Q.distCnst) {
-								if (isBeDominate(tmp, cS, Q)) {
+									updatecSDominate(tmp, cS);
 								}
-								else {
-									cS.push_back(tmp);
-								}
-							}
-						}// endif
+							}// endif
+						}
 					}
 				}
-
-
-			}// end for
-		}// endif
+				else {// Èç¹ûÖ»ÓÐ²¿·ÖÔÚ±ßÉÏ£¬hVisited
+					es.vState = hVisited;
+					edgeStates[ek] = es;
+				}
+			}
+		}// end for
+		
 	}// end while
 
 	 // ´¦ÀíhVisited
 
-	map<edgePair, edgeState, eSComparison>::iterator iterhV;
-	for (iterhV = visitedState.begin(); iterhV != visitedState.end(); ++iterhV) {
+	map<int, edgeState>::iterator iterhV = edgeStates.begin();
+	for (; iterhV != edgeStates.end(); ++iterhV) {
 		if (iterhV->second.vState == hVisited) {//´¦ÀíÖ»ÓÐ¾àÀëµ±Ç°½ÚµãÂú×ã¾àÀëÔ¼ÊøµÄPOI
 			int nodei, nodej;
+			int brknodei, brknodej;
+			breakKey(iterhV->first, brknodei, brknodej);
 			if (iterhV->second.iDisToQuery == INFINITE_MAX) {
-				nodei = iterhV->first.Nj;
-				nodej = iterhV->first.Ni;
+				nodei = brknodej;
+				nodej = brknodei;
 			}
 			else {
-				nodei = iterhV->first.Nj;
-				nodej = iterhV->first.Ni;
+				nodei = brknodei;
+				nodej = brknodej;
 			}
 			//»ñÈ¡±ßÉÏµÄPOI
 			AdjGrpAddr = getAdjListGrpAddr(nodei);
@@ -596,25 +579,24 @@ void EABasedAlgorithm(const QueryPoint &Q) {
 					getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
 					getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
 
-					nOfEdgeExpd++;
-
 					//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
 					if (PtGrpKey == -1) {
 						//cout<<"No POI existed on Edge where Q located."<<endl;
 					}
 					else {
+						nOfEdgeExpended++;
 						getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
 						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 						//Notice the order POI visited on edge
 						for (int j = 0; j<PtNumOnEdge; j++) {
-							poicnt++;
+							nOfPOIVisited++;
 							getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
+							getVarE(PT_NKWD, Ref(nKwd), PtGrpKey, j);
 							getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-							int num = sizeof(tempKwd) / sizeof(int);
-							for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
+							//int num = sizeof(tempKwd) / sizeof(int);
+							for (int loop = 0; loop<nKwd; loop++) {
 								int temp;
-								memcpy(&temp, tempKwd + loop, sizeof(int));
+								memcpy(&temp, tempKwd + loop*sizeof(int), sizeof(int));
 								tempKwds.insert(temp);
 							}
 
@@ -626,34 +608,28 @@ void EABasedAlgorithm(const QueryPoint &Q) {
 								else {
 									tmp.dist_toquery = iterhV->second.jDisToQuery + EdgeDist - PtDist;
 								}
-								getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-								getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 								if (tmp.dist_toquery <= Q.distCnst) {
-									if (isBeDominate(tmp, cS, Q)) {
-									}
-									else {
-										cS.push_back(tmp);
-									}
+									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
+									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
+									updatecSDominate(tmp, cS);
 								}
 							}// endif
 						}
-
 					}// endelse
 				}
 			}
 		}
 	}
 
-
 	for (int i = 0; i<cS.size(); i++) {
 		rS.push_back(cS[i].poid);
 		//cout<<cS[i].poid<<" ";
 	}
 	//cout<<endl;
-	//cout<<"POI Read           #:"<<poicnt<<endl;  
-	//cout<<"Road Dominate Tested   #:"<<nOfDomiTest<<endl;
-	//cout<<"Road Edge Expanded #:"<<nOfEdgeExpd<<endl;
+	//cout<<"POI Read           #:"<<nOfPOIVisited<<endl;  
+	//cout<<"Road Dominate Tested   #:"<<nOfDominateTest<<endl;
+	//cout<<"Road Edge Expanded #:"<<nOfEdgeExpended<<endl;
 	//base2numedgeexpand+=edgeexpanded;
 	//base2numnodeexpand+=roadnodecnt;
 }
@@ -823,745 +799,6 @@ vector<float> dijkstra_candidate(const QueryPoint &Q, int tid, vector<TreeNode> 
 	//Çó×î¶ÌÂ·¾¶
 }
 
-void EGBUAlgorithm(const QueryPoint &Q) {
-	//process leadnode, two situation:1, not in same part 2, in the same part
-	int Ni = Q.Ni, Nj = Q.Nj;//Ni must less than Nj
-	int AdjGrpAddr, AdjListSize, NewNodeID, PtGrpKey, PtNumOnEdge;
-	//unsigned long long keywords;
-	set<int> tempKwds;
-	set<int> visNodes;
-	int *tempKwd;
-	set<int> edgeSumKwds;
-	float edgeSumAttr[ATTRIBUTE_DIMENSION][2];
-	float EdgeDist, PtDist;
-	// locate the treeNodeID
-	int trNodeIDi, trNodeIDj;
-	int currTNID;
-	float minDist;
-	dijkVisit dvi, dvj;
-
-	AdjGrpAddr = getAdjListGrpAddr(Ni);
-	getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-	AdjGrpAddr = getAdjListGrpAddr(Ni);
-	getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-	for (int i = 0; i<AdjListSize; i++) {
-		getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
-		//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
-		if (NewNodeID == Nj) {
-			getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
-			//¼ÇÂ¼²éÑ¯±ß¾àÀë
-			queryEdgeDist = EdgeDist;
-			getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
-			getVarE(SUMKWD_A, &edgeSumKwds.begin(), AdjGrpAddr, i);
-			getVarE(SUMATTR_A, edgeSumAttr, AdjGrpAddr, i);
-
-			edgePair epi, epj;
-			edgeState esi, esj;
-			epi.Ni = 0;
-			epi.Nj = Q.Ni;
-			esi.vState = visited;
-			esi.iDisToQuery = 0;
-			esi.jDisToQuery = Q.dist_Ni;
-
-			epj.Ni = 0;
-			epj.Nj = Q.Nj;
-			esj.iDisToQuery = 0;
-			esj.jDisToQuery = EdgeDist - Q.dist_Ni;
-
-			visitedState[epi] = esi;
-			visitedState[epj] = esj;
-
-			if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
-
-				break;
-			}
-			if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
-
-				break;
-			}
-			nOfEdgeExpd++;
-
-			//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
-			if (PtGrpKey == -1) {
-				//cout<<"No POI existed on Edge where Q located."<<endl;
-			}
-			else {
-				getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-				//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-				//Notice the order POI visited on edge
-				for (int j = 0; j<PtNumOnEdge; j++) {
-					//poicnt++;
-					getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-					getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-
-					int num = sizeof(tempKwd) / sizeof(int);
-					for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-						int temp;
-						memcpy(&temp, tempKwd + loop, sizeof(int));
-						tempKwds.insert(temp);
-					}
-
-					if (LcontianRIKwd(tempKwds, Q.kwd)) {
-						POI tmp;
-						tmp.dist_toquery = fabs(PtDist - Q.dist_Ni);
-						getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-						getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-						if (tmp.dist_toquery <= Q.distCnst) {
-							if (isBeDominate(tmp, cS, Q)) {
-							}
-							else {
-								cS.push_back(tmp);
-							}
-						}
-					}// endif
-				}
-
-			}// endelse
-		}
-	}
-
-	trNodeIDi = paID[Ni].part;
-	trNodeIDj = paID[Nj].part;
-	if (trNodeIDi == trNodeIDj) { //Á½¸öÔÚÒ»¸ö»®·Ö¿éÀïÃæ
-		currTNID = trNodeIDi;
-		dvi.N = Q.Ni;
-		dvi.disTQ = Q.dist_Ni;
-
-		dvj.N = Q.Nj;
-		dvj.disTQ = EdgeDist - Q.dist_Ni;
-
-		dvq.push(dvi);
-		dvq.push(dvj);
-	} /*else { //²éÑ¯µãÔÚ±ß½ç±ßÉÏÃæ
-	  if(trNodeIDi < trNodeIDj) {
-	  currTNID = trNodeIDi;
-	  dvi.N = Q.Ni;
-	  dvi.disTQ = Q.dist_Ni;
-	  dvq.push(dvi);
-	  } else {
-	  currTNID = trNodeIDj;
-	  dvj.N = Q.Nj;
-	  dvj.disTQ = EdgeDist-Q.dist_Ni;
-	  dvq.push(dvj);
-	  }
-	  }*/
-	  //------------&&&&&&&&&&&&&&ÄÚ²¿½Úµã´¦Àí
-	while (!dvq.empty()) {
-		dijkVisit tmpDV = dvq.top();
-		dvq.pop();
-		if (paID[tmpDV.N].part != currTNID) continue;
-		if (tmpDV.disTQ <= Q.distCnst) {
-			AdjGrpAddr = getAdjListGrpAddr(tmpDV.N);
-			getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-			for (int i = 0; i<AdjListSize; i++) {
-				getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
-				getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
-				getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
-				edgePair ep;
-				ep.Ni = NewNodeID<tmpDV.N ? NewNodeID : tmpDV.N;
-				ep.Nj = NewNodeID>tmpDV.N ? NewNodeID : tmpDV.N;
-				map<edgePair, edgeState, eSComparison>::iterator iter;
-				iter = visitedState.find(ep);
-				if (iter != visitedState.end()) {
-					if (visitedState[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
-						visitedState[ep].vState == visited;
-						//---Ìí¼Ó¾àÀëvisitedState
-						if (tmpDV.N < NewNodeID) {
-							visitedState[ep].iDisToQuery = tmpDV.disTQ;
-						}
-						else {
-							visitedState[ep].jDisToQuery = tmpDV.disTQ;
-						}
-						//´ÓÁ½¶Ë¼ÓÈëPOIs
-						if (PtGrpKey == -1) {
-							//cout<<"No POI existed on Edge where Q located."<<endl;
-						}
-						else {
-
-							getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-							//Notice the order POI visited on edge
-							for (int j = 0; j<PtNumOnEdge; j++) {
-								poicnt++;
-								getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-								getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-								int num = sizeof(tempKwd) / sizeof(int);
-								for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-									int temp;
-									memcpy(&temp, tempKwd + loop, sizeof(int));
-									tempKwds.insert(temp);
-								}
-
-								if (LcontianRIKwd(tempKwds, Q.kwd)) {
-									POI tmp;
-									//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
-									float d1, d2;
-									d1 = visitedState[ep].iDisToQuery + PtDist;
-									d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
-									tmp.dist_toquery = d1<d2 ? d1 : d2;
-
-									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-									if (tmp.dist_toquery <= Q.distCnst) {
-										if (isBeDominate(tmp, cS, Q)) {
-										}
-										else {
-											cS.push_back(tmp);
-										}
-									}
-								}// endif
-							}
-						}
-					}
-					else if (visitedState[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
-																   //---Ìí¼Ó¾àÀëvisitedState
-						if (tmpDV.N < NewNodeID) {
-							visitedState[ep].iDisToQuery = tmpDV.disTQ;
-						}
-						else {
-							visitedState[ep].jDisToQuery = tmpDV.disTQ;
-						}
-					}
-					else {
-
-					}
-				}
-				else {
-					edgePair ep;
-					edgeState es;
-					if (tmpDV.N < NewNodeID) {
-						ep.Ni = tmpDV.N;
-						ep.Nj = NewNodeID;
-						es.iDisToQuery = tmpDV.disTQ;
-						es.jDisToQuery = INFINITE_MAX;
-					}
-					else {
-						ep.Ni = NewNodeID;
-						ep.Nj = tmpDV.N;
-						es.iDisToQuery = INFINITE_MAX;
-						es.jDisToQuery = tmpDV.disTQ;
-					}
-					if (distTQ.find(NewNodeID) != distTQ.end()) {
-						if (distTQ[NewNodeID]>(tmpDV.disTQ + EdgeDist)) {
-							distTQ[NewNodeID] = tmpDV.disTQ + EdgeDist;
-						}
-					}
-					else {
-						distTQ[NewNodeID] = tmpDV.disTQ + EdgeDist;
-					}
-					if (distTQ[NewNodeID] <= Q.distCnst) {
-						//½«ÕûÌõ±ß¼ÓÈë
-						es.vState = visited;
-						visitedState[ep] = es;
-
-
-
-						if (PtGrpKey == -1) {
-							//cout<<"No POI existed on Edge where Q located."<<endl;
-						}
-						else {
-							getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-							//»ñµÃ¹Ø¼ü×ÖÐÅÏ¢ºÍÊôÐÔÐÅÏ¢£¬Ö±½Ó¹ýÂË
-							if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
-								//ÕâÌõ±ß²»¼Ó
-								continue;
-							}
-							if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
-								//ÕâÌõ±ß²»¼Ó
-								continue;
-							}
-							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-							//Notice the order POI visited on edge
-							for (int j = 0; j<PtNumOnEdge; j++) {
-								poicnt++;
-								getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-								getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-								int num = sizeof(tempKwd) / sizeof(int);
-								for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-									int temp;
-									memcpy(&temp, tempKwd + loop, sizeof(int));
-									tempKwds.insert(temp);
-								}
-
-								if (LcontianRIKwd(tempKwds, Q.kwd)) {
-									POI tmp; //ÕâÊ±ºò¿ÉÄÜ²»ÊÇÕæÊµ¾àÀë,Ò²²»»áÓ°Ïì½á¹û
-									if (tmpDV.N<NewNodeID) {
-										tmp.dist_toquery = tmpDV.disTQ + PtDist;
-									}
-									else {
-										tmp.dist_toquery = tmpDV.disTQ + EdgeDist - PtDist;
-									}
-
-
-									getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-									if (tmp.dist_toquery <= Q.distCnst) {
-										if (isBeDominate(tmp, cS, Q)) {
-										}
-										else {
-											cS.push_back(tmp);
-										}
-									}
-								}// endif
-							}
-						}
-
-					}
-					else {// Èç¹ûÖ»ÓÐ²¿·ÖÔÚ±ßÉÏ£¬hVisited
-						if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
-							//ÕâÌõ±ß²»¼Ó
-							es.vState = visited;
-							visitedState[ep] = es;
-							continue;
-						}
-						if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
-							//ÕâÌõ±ß²»¼Ó
-							es.vState = visited;
-							visitedState[ep] = es;
-							continue;
-						}
-						es.vState = hVisited;
-						visitedState[ep] = es;
-					}
-				}
-
-				//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
-				//getVarE(PTKEY_A,Ref(PtGrpKey),AdjGrpAddr,i);
-				if (PtGrpKey == -1) {
-					//cout<<"No POI existed on Edge where Q located."<<endl;
-				}
-				else {
-
-					getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-					//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-					//Notice the order POI visited on edge
-					for (int j = 0; j<PtNumOnEdge; j++) {
-						poicnt++;
-						getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-						getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-						int num = sizeof(tempKwd) / sizeof(int);
-						for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-							int temp;
-							memcpy(&temp, tempKwd + loop, sizeof(int));
-							tempKwds.insert(temp);
-						}
-
-						if (LcontianRIKwd(tempKwds, Q.kwd)) {
-							POI tmp;
-							tmp.dist_toquery = fabs(PtDist - Q.dist_Ni);
-							getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-							getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-							if (tmp.dist_toquery <= Q.distCnst) {
-								if (isBeDominate(tmp, cS, Q)) {
-								}
-								else {
-									cS.push_back(tmp);
-								}
-							}
-						}// endif
-					}
-				}
-
-
-			}// end for
-		}// endif
-	}// end while
-
-
-
-
-
-
-	 //upward
-	 //-------------------top treeNodeID is 0
-	visitedSet.insert(currTNID);
-	TreeNode tn;
-	while (!tnq.empty() || currTNID != 0) { //
-		if (tnq.empty()) {
-			currTNID = EGT[currTNID].father;
-			// if currTNID is filter by summary information and distance 
-			if (!LcontianRIKwd(EGT[currTNID].union_kwd, Q.kwd)) {
-				if (visitedSet.find(currTNID) == visitedSet.end()) visitedSet.insert(currTNID);
-				continue;
-			}
-			if (isBeBoundDominate(EGT[currTNID].attrBound, cS, Q)) {
-				if (visitedSet.find(currTNID) == visitedSet.end()) visitedSet.insert(currTNID);
-				continue;
-			}
-			if (EGT[currTNID].minDistTQ > Q.distCnst) {
-				if (visitedSet.find(currTNID) == visitedSet.end()) visitedSet.insert(currTNID);
-				continue;
-			}
-			// add unvisited sub node into tnq and compute mindist
-			for (int i = 0; i<EGT[currTNID].children.size();) {
-				int cid = EGT[currTNID].children[i];
-				if (visitedSet.find(cid) == visitedSet.end()) {
-					//if is not filter by summary information
-					if (!LcontianRIKwd(EGT[cid].union_kwd, Q.kwd)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					if (isBeBoundDominate(EGT[cid].attrBound, cS, Q)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					if (EGT[cid].minDistTQ > Q.distCnst) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					//compute the minDistTQ,refDistTQ&minDistTQ
-					vector<float> distTQ;
-					distTQ = dijkstra_candidate(Q, cid, EGT);
-					float minDist = INFINITE_MAX;
-					for (int k = 0; k<distTQ.size(); k++) {
-						if (distTQ[k] < minDist) minDist = distTQ[k];
-						EGT[cid].refDistTQ.push_back(Q.distCnst - distTQ[k]);
-					}
-					EGT[cid].minDistTQ = minDist;
-					//----------------&&&&&&&¾«Á¶Dist£¬
-					tnq.push(EGT[cid]);
-				}
-			}
-
-		}
-
-		tn = tnq.top();
-		tnq.pop();
-		if (tn.isleaf) { //Èç¹ûÊÇÒ¶×Ó½Úµã£¬´¦Àí
-						 // utilize the mind to retrieve this node meet distance constraint
-						 //---------&&&&&&&&&&&&¼ÆËãÂú×ã¾àÀëÔ¼ÊøµÄnode¼¯ºÏ£¬²¢
-			vector<float> tempDist;
-			for (int k = 0; k<tn.leafnodes.size(); k++) {
-				tempDist.push_back(INFINITE_MAX);
-			}
-			for (int k = 0; k<tn.refDistTQ.size(); k++) {
-				//float mindist = INFINITE_MAX;
-				if (tn.refDistTQ[k]<0) continue;
-				int pos, size = tn.leafnodes.size();
-				float tempD;
-				for (int t = 0; t<tn.leafnodes.size(); t++) {
-					pos = k*size + t;
-					tempD = Q.distCnst - tn.refDistTQ[k] + tn.mind[pos];
-					if (tempD <= Q.distCnst) {
-						if (tempD<tempDist[t]) tempDist[t] = tempD;
-					}
-				}
-			}
-			//¹¹½¨dvq------------xiugai----------&&&&&&&&&&&
-			dijkVisit tmpDV = dvq.top();
-			for (int k = 0; k<tempDist.size(); k++) {
-				if (tempDist[k]>Q.distCnst) continue;
-				//ÎªÃ¿¸ö·ûºÏÌõ¼þµÄµãÕ¹¿ª
-				/*dijkVisit dv;
-				dv.N = tn.leafnodes[k];
-				dv.disTQ = tempDis[k];
-				dvq.push(dv);*/
-				AdjGrpAddr = getAdjListGrpAddr(tn.leafnodes[k]);
-				getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-				for (int i = 0; i<AdjListSize; i++) {
-					getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
-					getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
-					getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
-					getVarE(SUMKWD_A, &edgeSumKwds.begin(), AdjGrpAddr, i);
-					getVarE(SUMATTR_A, edgeSumAttr, AdjGrpAddr, i);
-					edgePair ep;
-					ep.Ni = NewNodeID<tn.leafnodes[k] ? NewNodeID : tn.leafnodes[k];
-					ep.Nj = NewNodeID>tn.leafnodes[k] ? NewNodeID : tn.leafnodes[k];
-					map<edgePair, edgeState, eSComparison>::iterator iter;
-					iter = visitedState.find(ep);
-					if (iter != visitedState.end()) {
-						if (visitedState[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
-							visitedState[ep].vState == visited;
-							//---Ìí¼Ó¾àÀëvisitedState
-							if (tn.leafnodes[k] < NewNodeID) {
-								visitedState[ep].iDisToQuery = tempDist[k];
-							}
-							else {
-								visitedState[ep].jDisToQuery = tempDist[k];
-							}
-							//´ÓÁ½¶Ë¼ÓÈëPOIs
-							if (PtGrpKey == -1) {
-								//cout<<"No POI existed on Edge where Q located."<<endl;
-							}
-							else {
-
-								getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-								//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-								//Notice the order POI visited on edge
-								for (int j = 0; j<PtNumOnEdge; j++) {
-									poicnt++;
-									getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-									getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-									int num = sizeof(tempKwd) / sizeof(int);
-									for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-										int temp;
-										memcpy(&temp, tempKwd + loop, sizeof(int));
-										tempKwds.insert(temp);
-									}
-
-									if (LcontianRIKwd(tempKwds, Q.kwd)) {
-										POI tmp;
-										//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
-										float d1, d2;
-										d1 = visitedState[ep].iDisToQuery + PtDist;
-										d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
-										tmp.dist_toquery = d1<d2 ? d1 : d2;
-
-										getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-										getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-										if (tmp.dist_toquery <= Q.distCnst) {
-											if (isBeDominate(tmp, cS, Q)) {
-											}
-											else {
-												cS.push_back(tmp);
-											}
-										}
-									}// endif
-								}
-							}
-						}
-						else if (visitedState[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
-																	   //---Ìí¼Ó¾àÀëvisitedState
-							if (tmpDV.N < NewNodeID) {
-								visitedState[ep].iDisToQuery = tempDist[k];
-							}
-							else {
-								visitedState[ep].jDisToQuery = tempDist[k];
-							}
-						}
-						else {
-
-
-						}
-					}
-					else {
-						//ÅÐ¶ÏÊÇ·ñÒª¼ÓÈëµ½epÖÐ			
-						edgeState es;
-						if (tn.leafnodes[k] < NewNodeID) {
-							ep.Ni = tn.leafnodes[k];
-							ep.Nj = NewNodeID;
-							es.iDisToQuery = tempDist[k];
-							es.jDisToQuery = INFINITE_MAX;
-						}
-						else {
-							ep.Ni = NewNodeID;
-							ep.Nj = tn.leafnodes[k];
-							es.iDisToQuery = INFINITE_MAX;
-							es.jDisToQuery = tempDist[k];
-						}
-						if (distTQ.find(NewNodeID) != distTQ.end()) {
-							if (distTQ[NewNodeID]>(tempDist[k] + EdgeDist)) {
-								distTQ[NewNodeID] = tempDist[k] + EdgeDist;
-							}
-						}
-						else {
-							distTQ[NewNodeID] = tempDist[k] + EdgeDist;
-						}
-						if (distTQ[NewNodeID] <= Q.distCnst) {
-							//½«ÕûÌõ±ß¼ÓÈë
-							es.vState = visited;
-							visitedState[ep] = es;
-
-							if (PtGrpKey == -1) {
-								//cout<<"No POI existed on Edge where Q located."<<endl;
-							}
-							else {
-								//»ñµÃ¹Ø¼ü×ÖÐÅÏ¢ºÍÊôÐÔÐÅÏ¢£¬Ö±½Ó¹ýÂË
-								if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
-									//ÕâÌõ±ß²»¼Ó
-									continue;
-								}
-								if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
-									//ÕâÌõ±ß²»¼Ó
-									continue;
-								}
-
-								//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-								//Notice the order POI visited on edge
-								for (int j = 0; j<PtNumOnEdge; j++) {
-									poicnt++;
-									getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-									getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-									int num = sizeof(tempKwd) / sizeof(int);
-									for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-										int temp;
-										memcpy(&temp, tempKwd + loop, sizeof(int));
-										tempKwds.insert(temp);
-									}
-
-									if (LcontianRIKwd(tempKwds, Q.kwd)) {
-										POI tmp; //ÕâÊ±ºò¿ÉÄÜ²»ÊÇÕæÊµ¾àÀë,Ò²²»»áÓ°Ïì½á¹û
-										if (tmpDV.N<NewNodeID) {
-											tmp.dist_toquery = tmpDV.disTQ + PtDist;
-										}
-										else {
-											tmp.dist_toquery = tmpDV.disTQ + EdgeDist - PtDist;
-										}
-
-
-										getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-										getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-										if (tmp.dist_toquery <= Q.distCnst) {
-											if (isBeDominate(tmp, cS, Q)) {
-											}
-											else {
-												cS.push_back(tmp);
-											}
-										}
-									}// endif
-								}
-							}
-
-						}
-						else {// Èç¹ûÖ»ÓÐ²¿·ÖÔÚ±ßÉÏ£¬hVisited
-							  //if±»¹Ø¼ü×ÖµÈ¹ýÂËµô£¬ÔòÖ±½ÓËãÊÇvisited
-							  //»ñµÃ¹Ø¼ü×ÖÐÅÏ¢ºÍÊôÐÔÐÅÏ¢£¬Ö±½Ó¹ýÂË
-							if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
-								//ÕâÌõ±ß²»¼Ó
-								es.vState = visited;
-								visitedState[ep] = es;
-								continue;
-							}
-							if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
-								//ÕâÌõ±ß²»¼Ó
-								es.vState = visited;
-								visitedState[ep] = es;
-								continue;
-							}
-							es.vState = hVisited;
-							visitedState[ep] = es;
-						}
-					}
-
-
-				}//endif
-			}//endfor
-
-		}
-		else { //²»ÊÇÒ¶×Ó½Úµã´¦Àí
-			for (int i = 0; i<tn.children.size();) {
-				int cid = tn.children[i];
-				if (visitedSet.find(cid) == visitedSet.end()) {
-					//if is not filter by summary information
-					if (!LcontianRIKwd(EGT[cid].union_kwd, Q.kwd)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					if (isBeBoundDominate(EGT[cid].attrBound, cS, Q)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					if (EGT[cid].minDistTQ > Q.distCnst) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
-						continue;
-					}
-					//compute the minDistTQ
-					vector<float> distTQ;
-					distTQ = dijkstra_candidate(Q, cid, EGT);
-					float minDist = INFINITE_MAX;
-					for (int k = 0; k<distTQ.size(); k++) {
-						if (distTQ[k] < minDist) minDist = distTQ[k];
-						EGT[cid].refDistTQ.push_back(Q.distCnst - distTQ[k]);
-					}
-					EGT[cid].minDistTQ = minDist;
-					//----------------&&&&&&&
-					tnq.push(EGT[cid]);
-				}
-			}
-		}
-	}
-	// handel hvisited
-	// ´¦ÀíhVisited
-
-	map<edgePair, edgeState, eSComparison>::iterator iterhV;
-	for (iterhV = visitedState.begin(); iterhV != visitedState.end(); ++iterhV) {
-		if (iterhV->second.vState == hVisited) {//´¦ÀíÖ»ÓÐ¾àÀëµ±Ç°½ÚµãÂú×ã¾àÀëÔ¼ÊøµÄPOI
-			int nodei, nodej;
-			if (iterhV->second.iDisToQuery == INFINITE_MAX) {
-				nodei = iterhV->first.Nj;
-				nodej = iterhV->first.Ni;
-			}
-			else {
-				nodei = iterhV->first.Nj;
-				nodej = iterhV->first.Ni;
-			}
-			//»ñÈ¡±ßÉÏµÄPOI
-			AdjGrpAddr = getAdjListGrpAddr(nodei);
-			getFixedF(SIZE_A, Ref(AdjListSize), AdjGrpAddr);
-			for (int i = 0; i<AdjListSize; i++) {
-				getVarE(ADJNODE_A, Ref(NewNodeID), AdjGrpAddr, i);
-				//getVarE(DIST_A,Ref(EdgeDist),AdjGrpAddr,i);
-				if (NewNodeID == nodej) {
-					getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
-					getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
-
-					nOfEdgeExpd++;
-
-					//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
-					if (PtGrpKey == -1) {
-						//cout<<"No POI existed on Edge where Q located."<<endl;
-					}
-					else {
-						getFixedF(SIZE_P, Ref(PtNumOnEdge), PtGrpKey);
-						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
-						//Notice the order POI visited on edge
-						for (int j = 0; j<PtNumOnEdge; j++) {
-							poicnt++;
-							getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
-
-							getVarE(PT_KWD, tempKwd, PtGrpKey, j);
-							int num = sizeof(tempKwd) / sizeof(int);
-							for (int loop = 0; loop<sizeof(tempKwd); loop + sizeof(int)) {
-								int temp;
-								memcpy(&temp, tempKwd + loop, sizeof(int));
-								tempKwds.insert(temp);
-							}
-
-							if (LcontianRIKwd(tempKwds, Q.kwd)) {
-								POI tmp;
-								if (nodei<nodej) {
-									tmp.dist_toquery = iterhV->second.iDisToQuery + PtDist;
-								}
-								else {
-									tmp.dist_toquery = iterhV->second.jDisToQuery + EdgeDist - PtDist;
-								}
-								getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
-								getVarE(PT_P, &tmp.poid, PtGrpKey, j);
-
-								if (tmp.dist_toquery <= Q.distCnst) {
-									if (isBeDominate(tmp, cS, Q)) {
-									}
-									else {
-										cS.push_back(tmp);
-									}
-								}
-							}// endif
-						}
-
-					}// endelse
-				}
-			}
-		}
-	}
-
-	for (int i = 0; i<cS.size(); i++) {
-		rS.push_back(cS[i].poid);
-		//cout<<cS[i].poid<<" ";
-	}
-}
-
-
 //------------------for EGTD------------------------
 bool LEditKwdContainR(set<set<int>> editKwd, set<int> qkwd) {
 	set<set<int>> ::iterator it = editKwd.begin();
@@ -1644,11 +881,11 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 	int upid = pathID[sizeT - 1];
 	int cVistPID = paID[Ni].part;
 	int currID = upid;
-	tdnq.push(EGTree[upid]);
+	tnq.push(EGTree[upid]);
 	// while loop
-	while (!tdnq.empty()) {
-		TreeNode tn = tdnq.top();
-		tdnq.pop();
+	while (!tnq.empty()) {
+		TreeNode tn = tnq.top();
+		tnq.pop();
 		//***************************
 		if (tn.isleaf) { // if is leaf node, there are two situations
 			if (currID == cVistPID) { // if in the query leaf node
@@ -1680,8 +917,8 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 						esj.iDisToQuery = 0;
 						esj.jDisToQuery = EdgeDist - Q.dist_Ni;
 
-						visitedState[epi] = esi;
-						visitedState[epj] = esj;
+						edgeStates[epi] = esi;
+						edgeStates[epj] = esj;
 
 						if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
 
@@ -1691,7 +928,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 
 							break;
 						}
-						nOfEdgeExpd++;
+						nOfEdgeExpended++;
 
 						//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
 						if (PtGrpKey == -1) {
@@ -1702,7 +939,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 							//Notice the order POI visited on edge
 							for (int j = 0; j<PtNumOnEdge; j++) {
-								poicnt++;
+								nOfPOIVisited++;
 								getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 								getVarE(PT_KWD, tempKwd, PtGrpKey, j);
 
@@ -1720,11 +957,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 									getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 									if (tmp.dist_toquery <= Q.distCnst) {
-										if (isBeDominate(tmp, cS, Q)) {
-										}
-										else {
-											cS.push_back(tmp);
-										}
+										updatecSDominate(tmp, cS);
 									}
 								}// endif
 							}
@@ -1774,16 +1007,16 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							ep.Ni = NewNodeID<tmpDV.N ? NewNodeID : tmpDV.N;
 							ep.Nj = NewNodeID>tmpDV.N ? NewNodeID : tmpDV.N;
 							map<edgePair, edgeState, eSComparison>::iterator iter;
-							iter = visitedState.find(ep);
-							if (iter != visitedState.end()) {
-								if (visitedState[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
-									visitedState[ep].vState == visited;
-									//---Ìí¼Ó¾àÀëvisitedState
+							iter = edgeStates.find(ep);
+							if (iter != edgeStates.end()) {
+								if (edgeStates[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
+									edgeStates[ep].vState == visited;
+									//---Ìí¼Ó¾àÀëedgeStates
 									if (tmpDV.N < NewNodeID) {
-										visitedState[ep].iDisToQuery = tmpDV.disTQ;
+										edgeStates[ep].iDisToQuery = tmpDV.disTQ;
 									}
 									else {
-										visitedState[ep].jDisToQuery = tmpDV.disTQ;
+										edgeStates[ep].jDisToQuery = tmpDV.disTQ;
 									}
 									//´ÓÁ½¶Ë¼ÓÈëPOIs
 									if (PtGrpKey == -1) {
@@ -1795,7 +1028,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 										//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 										//Notice the order POI visited on edge
 										for (int j = 0; j<PtNumOnEdge; j++) {
-											poicnt++;
+											nOfPOIVisited++;
 											getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 											getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -1810,31 +1043,27 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 												POI tmp;
 												//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
 												float d1, d2;
-												d1 = visitedState[ep].iDisToQuery + PtDist;
-												d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
+												d1 = edgeStates[ep].iDisToQuery + PtDist;
+												d2 = edgeStates[ep].jDisToQuery + EdgeDist - PtDist;
 												tmp.dist_toquery = d1<d2 ? d1 : d2;
 
 												getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
 												getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 												if (tmp.dist_toquery <= Q.distCnst) {
-													if (isBeDominate(tmp, cS, Q)) {
-													}
-													else {
-														cS.push_back(tmp);
-													}
+													updatecSDominate(tmp, cS);
 												}
 											}// endif
 										}
 									}
 								}
-								else if (visitedState[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
-																			   //---Ìí¼Ó¾àÀëvisitedState
+								else if (edgeStates[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
+																			   //---Ìí¼Ó¾àÀëedgeStates
 									if (tmpDV.N < NewNodeID) {
-										visitedState[ep].iDisToQuery = tmpDV.disTQ;
+										edgeStates[ep].iDisToQuery = tmpDV.disTQ;
 									}
 									else {
-										visitedState[ep].jDisToQuery = tmpDV.disTQ;
+										edgeStates[ep].jDisToQuery = tmpDV.disTQ;
 									}
 								}
 								else {
@@ -1867,7 +1096,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 								if (distTQ[NewNodeID] <= Q.distCnst) {
 									//½«ÕûÌõ±ß¼ÓÈë
 									es.vState = visited;
-									visitedState[ep] = es;
+									edgeStates[ep] = es;
 
 
 
@@ -1888,7 +1117,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 										//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 										//Notice the order POI visited on edge
 										for (int j = 0; j<PtNumOnEdge; j++) {
-											poicnt++;
+											nOfPOIVisited++;
 											getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 											getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -1913,11 +1142,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 												getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 												if (tmp.dist_toquery <= Q.distCnst) {
-													if (isBeDominate(tmp, cS, Q)) {
-													}
-													else {
-														cS.push_back(tmp);
-													}
+													updatecSDominate(tmp, cS);
 												}
 											}// endif
 										}
@@ -1928,17 +1153,17 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 									if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
 										//ÕâÌõ±ß²»¼Ó
 										es.vState = visited;
-										visitedState[ep] = es;
+										edgeStates[ep] = es;
 										continue;
 									}
 									if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
 										//ÕâÌõ±ß²»¼Ó
 										es.vState = visited;
-										visitedState[ep] = es;
+										edgeStates[ep] = es;
 										continue;
 									}
 									es.vState = hVisited;
-									visitedState[ep] = es;
+									edgeStates[ep] = es;
 								}
 							}
 
@@ -1953,7 +1178,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 								//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 								//Notice the order POI visited on edge
 								for (int j = 0; j<PtNumOnEdge; j++) {
-									poicnt++;
+									nOfPOIVisited++;
 									getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 									getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -1971,11 +1196,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 										getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 										if (tmp.dist_toquery <= Q.distCnst) {
-											if (isBeDominate(tmp, cS, Q)) {
-											}
-											else {
-												cS.push_back(tmp);
-											}
+											updatecSDominate(tmp, cS);
 										}
 									}// endif
 								}
@@ -2029,16 +1250,16 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 						ep.Ni = NewNodeID<tn.leafnodes[k] ? NewNodeID : tn.leafnodes[k];
 						ep.Nj = NewNodeID>tn.leafnodes[k] ? NewNodeID : tn.leafnodes[k];
 						map<edgePair, edgeState, eSComparison>::iterator iter;
-						iter = visitedState.find(ep);
-						if (iter != visitedState.end()) {
-							if (visitedState[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
-								visitedState[ep].vState == visited;
-								//---Ìí¼Ó¾àÀëvisitedState
+						iter = edgeStates.find(ep);
+						if (iter != edgeStates.end()) {
+							if (edgeStates[ep].vState == hVisited) {// ¼ÆËãÁ½¶ËµÄPOI£¬ÐÞ¸Ä×´Ì¬
+								edgeStates[ep].vState == visited;
+								//---Ìí¼Ó¾àÀëedgeStates
 								if (tn.leafnodes[k] < NewNodeID) {
-									visitedState[ep].iDisToQuery = tempDist[k];
+									edgeStates[ep].iDisToQuery = tempDist[k];
 								}
 								else {
-									visitedState[ep].jDisToQuery = tempDist[k];
+									edgeStates[ep].jDisToQuery = tempDist[k];
 								}
 								//´ÓÁ½¶Ë¼ÓÈëPOIs
 								if (PtGrpKey == -1) {
@@ -2050,7 +1271,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 									//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 									//Notice the order POI visited on edge
 									for (int j = 0; j<PtNumOnEdge; j++) {
-										poicnt++;
+										nOfPOIVisited++;
 										getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 										getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -2065,31 +1286,27 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 											POI tmp;
 											//tmp.dist_toquery = fabs(PtDist-Q.dist_Ni);
 											float d1, d2;
-											d1 = visitedState[ep].iDisToQuery + PtDist;
-											d2 = visitedState[ep].jDisToQuery + EdgeDist - PtDist;
+											d1 = edgeStates[ep].iDisToQuery + PtDist;
+											d2 = edgeStates[ep].jDisToQuery + EdgeDist - PtDist;
 											tmp.dist_toquery = d1<d2 ? d1 : d2;
 
 											getVarE(PT_ATTRIBUTE, tmp.attr, PtGrpKey, j);
 											getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 											if (tmp.dist_toquery <= Q.distCnst) {
-												if (isBeDominate(tmp, cS, Q)) {
-												}
-												else {
-													cS.push_back(tmp);
-												}
+												updatecSDominate(tmp, cS);
 											}
 										}// endif
 									}
 								}
 							}
-							else if (visitedState[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
-																		   //---Ìí¼Ó¾àÀëvisitedState
+							else if (edgeStates[ep].vState == visited) { //ÐÞ¸Ä¾àÀë
+																		   //---Ìí¼Ó¾àÀëedgeStates
 								if (tmpDV.N < NewNodeID) {
-									visitedState[ep].iDisToQuery = tempDist[k];
+									edgeStates[ep].iDisToQuery = tempDist[k];
 								}
 								else {
-									visitedState[ep].jDisToQuery = tempDist[k];
+									edgeStates[ep].jDisToQuery = tempDist[k];
 								}
 							}
 							else {
@@ -2123,7 +1340,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 							if (distTQ[NewNodeID] <= Q.distCnst) {
 								//½«ÕûÌõ±ß¼ÓÈë
 								es.vState = visited;
-								visitedState[ep] = es;
+								edgeStates[ep] = es;
 
 								if (PtGrpKey == -1) {
 									//cout<<"No POI existed on Edge where Q located."<<endl;
@@ -2142,7 +1359,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 									//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 									//Notice the order POI visited on edge
 									for (int j = 0; j<PtNumOnEdge; j++) {
-										poicnt++;
+										nOfPOIVisited++;
 										getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 										getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -2167,11 +1384,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 											getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 											if (tmp.dist_toquery <= Q.distCnst) {
-												if (isBeDominate(tmp, cS, Q)) {
-												}
-												else {
-													cS.push_back(tmp);
-												}
+												updatecSDominate(tmp, cS);
 											}
 										}// endif
 									}
@@ -2184,17 +1397,17 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 								if (!LcontianRIKwd(edgeSumKwds, Q.kwd)) {
 									//ÕâÌõ±ß²»¼Ó
 									es.vState = visited;
-									visitedState[ep] = es;
+									edgeStates[ep] = es;
 									continue;
 								}
 								if (isBeBoundDominate(edgeSumAttr, cS, Q)) {
 									//ÕâÌõ±ß²»¼Ó
 									es.vState = visited;
-									visitedState[ep] = es;
+									edgeStates[ep] = es;
 									continue;
 								}
 								es.vState = hVisited;
-								visitedState[ep] = es;
+								edgeStates[ep] = es;
 							}
 						}
 
@@ -2207,28 +1420,28 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 			for (int i = 0; i<tn.children.size();) {
 				int cid = tn.children[i];
 				currID = cid;
-				if (visitedSet.find(cid) == visitedSet.end()) {
+				if (visitedTNSet.find(cid) == visitedTNSet.end()) {
 					//if is not filter by summary information
 					if (!LcontianRIKwd(EGT[cid].union_kwd, Q.kwd)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
+						if (visitedTNSet.find(cid) == visitedTNSet.end()) visitedTNSet.insert(cid);
 						continue;
 					}
 					if (isBeBoundDominate(EGT[cid].attrBound, cS, Q)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
+						if (visitedTNSet.find(cid) == visitedTNSet.end()) visitedTNSet.insert(cid);
 						continue;
 					}
 					if (EGT[cid].minDistTQ > Q.distCnst) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
+						if (visitedTNSet.find(cid) == visitedTNSet.end()) visitedTNSet.insert(cid);
 						continue;
 					}
 					// if is not filter by editDistance and locSkyline ***********
 					if (!LEditKwdContainR(EGT[cid].editKwd, Q.kwd)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
+						if (visitedTNSet.find(cid) == visitedTNSet.end()) visitedTNSet.insert(cid);
 						continue;
 					}
 					//**********************locSky 
 					if (!canLocSkylineNode(EGT[cid].locSky)) {
-						if (visitedSet.find(cid) == visitedSet.end()) visitedSet.insert(cid);
+						if (visitedTNSet.find(cid) == visitedTNSet.end()) visitedTNSet.insert(cid);
 						continue;
 					}
 
@@ -2252,7 +1465,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 	// ´¦ÀíhVisited
 
 	map<edgePair, edgeState, eSComparison>::iterator iterhV;
-	for (iterhV = visitedState.begin(); iterhV != visitedState.end(); ++iterhV) {
+	for (iterhV = edgeStates.begin(); iterhV != edgeStates.end(); ++iterhV) {
 		if (iterhV->second.vState == hVisited) {//´¦ÀíÖ»ÓÐ¾àÀëµ±Ç°½ÚµãÂú×ã¾àÀëÔ¼ÊøµÄPOI
 			int nodei, nodej;
 			if (iterhV->second.iDisToQuery == INFINITE_MAX) {
@@ -2273,7 +1486,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 					getVarE(DIST_A, Ref(EdgeDist), AdjGrpAddr, i);
 					getVarE(PTKEY_A, Ref(PtGrpKey), AdjGrpAddr, i);
 
-					nOfEdgeExpd++;
+					nOfEdgeExpended++;
 
 					//cout<<"("<<Ni<<","<<Nj<<") EdgeDist:"<<EdgeDist;
 					if (PtGrpKey == -1) {
@@ -2284,7 +1497,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 						//cout<<" PtNum on Edge where Q located:"<<PtNumOnEdge<<endl;
 						//Notice the order POI visited on edge
 						for (int j = 0; j<PtNumOnEdge; j++) {
-							poicnt++;
+							nOfPOIVisited++;
 							getVarE(PT_DIST, Ref(PtDist), PtGrpKey, j);
 
 							getVarE(PT_KWD, tempKwd, PtGrpKey, j);
@@ -2307,11 +1520,7 @@ void EGTDAlgorithm(const QueryPoint &Q) {
 								getVarE(PT_P, &tmp.poid, PtGrpKey, j);
 
 								if (tmp.dist_toquery <= Q.distCnst) {
-									if (isBeDominate(tmp, cS, Q)) {
-									}
-									else {
-										cS.push_back(tmp);
-									}
+									updatecSDominate(tmp, cS);
 								}
 							}// endif
 						}
@@ -2346,10 +1555,13 @@ void queryAlgorithm(const char* fileprefix) {
 int main(int argc, char *argv[]) {
 	string configFileName = "config.prop";
 	ConfigType cr(configFileName, argc, argv);
-	const char *indexFile = cr.getIndexFileName().c_str();
 
-	int algorithmId = EA;
+	//const char *indexFile = cr.getIndexFileName().c_str();
+	const char *indexFile = "F:\\experiment\\index";
+	algorithmId = EA;
+	OpenDiskComm(indexFile, 128, algorithmId);
 	queryAlgorithm(indexFile);
+	CloseDiskComm();
 	return 0;
 
 }

@@ -148,7 +148,7 @@ int ADJGRPE_FIXITEMSIZE = 3 * sizeof(int) + (1 + 2 * ATTRIBUTE_DIMENSION)*sizeof
 int PTGRP_FIXITEMSIZE = 2 * sizeof(int) + (ATTRIBUTE_DIMENSION + 1)*sizeof(float);
 
 enum FixedF { SIZE_A, NI_P, NJ_P, DIST_P, SIZE_P };
-enum VarE { ADJNODE_A, DIST_A, SUMATTR_A, PTKEY_A, SUMKWD_A, PT_P, PT_DIST, PT_ATTRIBUTE, PT_KWD };
+enum VarE { ADJNODE_A, DIST_A, SUMATTR_A, PTKEY_A, NSUMKWD_A, SUMKWD_A, PT_P, PT_DIST, PT_ATTRIBUTE, PT_NKWD, PT_KWD };
 // get the variant from the adjFile or PtFile, put the pos item from addr BaseAddr to buffer
 void getVarE(VarE type, void* buf, int BaseAddr, int pos)
 {
@@ -220,6 +220,12 @@ void getVarE(VarE type, void* buf, int BaseAddr, int pos)
 			addr = VarBaseP + sizeof(int) + sizeof(float);
 			size = ATTRIBUTE_DIMENSION*sizeof(float);
 		}
+
+		if (type == PT_NKWD) {
+			addr = VarBaseP + nOfKPos;
+			size = sizeof(int);
+		}
+
 		if (type == PT_KWD) //????是不是只存放了一个指针
 		{
 			addr = VarBaseP + nOfKPos + sizeof(int);
@@ -274,6 +280,11 @@ void getVarE(VarE type, void* buf, int BaseAddr, int pos)
 			size = sizeof(int);
 			flag = 1;
 		}
+		if (type == NSUMKWD_A) {
+			addr = VarBaseA + nOfKPosA;
+			size = sizeof(int);
+			flag = 1;
+		}
 		if (type == SUMKWD_A) {
 			addr = VarBaseA + nOfKPosA + sizeof(int);
 			int tempNKwdA = VarBaseA + nOfKPosA;
@@ -309,7 +320,6 @@ void getVarE(VarE type, void* buf, int BaseAddr, int pos)
 		}
 		VarBaseP = VarBaseP + pos*(PTGRP_FIXITEMSIZE)+numKwd*sizeof(int);
 
-
 		if (type == PT_P)
 		{
 			addr = VarBaseP;
@@ -328,6 +338,10 @@ void getVarE(VarE type, void* buf, int BaseAddr, int pos)
 		{
 			addr = VarBaseP + sizeof(int) + sizeof(float);
 			size = ATTRIBUTE_DIMENSION*sizeof(float);
+		}
+		if (type == PT_NKWD) {
+			addr = VarBaseP + nOfKPos;
+			size = sizeof(int);
 		}
 		if (type == PT_KWD) //????是不是只存放了一个指针
 		{
@@ -467,9 +481,7 @@ void CloseDiskComm()
 	delete PtTree;
 	delete[] gBuffer;
 
-	if (method != 1) {
-		fclose(EGTFile);
-	}
+	
 	//printPageAccess();
 	DestroyCache();
 	DestroyFreqCache(FC_A);

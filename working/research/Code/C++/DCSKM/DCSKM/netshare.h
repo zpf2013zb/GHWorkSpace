@@ -94,6 +94,7 @@ struct DStepComparison
 typedef	priority_queue<DStepEvent,vector<DStepEvent>,DStepComparison> DStepQueue;
 
 // for Dijkstra
+// ------------------M-- no use------------
 struct edgePair
 {
     int Ni;
@@ -116,7 +117,7 @@ struct eSComparison
 		return false;
     }
 };
-
+//--------------------------
 struct dijkVisit 
 {
 	int N;

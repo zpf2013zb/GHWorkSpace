@@ -638,7 +638,7 @@ vector<int> dijkstra_candidate(int s, vector<int> &cands, vector<Node> &graph) {
 				}
 			}
 		}
-
+		
 		// put min to result, add to visited
 		result[minpos] = min;
 		visited.insert(minpos);

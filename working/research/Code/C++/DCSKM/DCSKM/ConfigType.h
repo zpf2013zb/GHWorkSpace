@@ -24,7 +24,7 @@
 */
 std::string seperator = "\\";
 // for windows
-#define PRO_HOME_DIR std::string("\\Users\\pengfei\\Desktop\\DCSKM\\")
+#define PRO_HOME_DIR std::string("F:\\experiment"+seperator)
 #define CONFIG_PATH  PRO_HOME_DIR
 #define DATA_PATH PRO_HOME_DIR+std::string("data\\")
 #define INDEX_PATH PRO_HOME_DIR+std::string("index\\")

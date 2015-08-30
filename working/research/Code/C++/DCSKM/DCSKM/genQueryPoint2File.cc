@@ -62,9 +62,10 @@ void getRandEdge(int &Ni,int &Nj,float &Edgedist)
 //----------------------M--midify random to rand-----------
 void genSubspace(bitset<ATTRIBUTE_DIMENSION> &ss) {
 
-	int seq = 0;;
+	int seq = 0;
+	int seqMax = (int)pow(2, ATTRIBUTE_DIMENSION);
 	while (seq == 0) {
-		seq = (int)pow(2, ATTRIBUTE_DIMENSION);
+		seq = rand() % seqMax;
 	}
 	int i = 0;
 	while (seq)
@@ -75,7 +76,7 @@ void genSubspace(bitset<ATTRIBUTE_DIMENSION> &ss) {
 	}
 }
 //-------------------------M--修改了Q中的数据格式
-void genRandQ(struct QueryPoint &Q,int topk)
+void genRandQ(struct QueryPoint &Q)
 {
     float edgedist=0.0;
     getRandEdge(Q.Ni,Q.Nj,edgedist);
